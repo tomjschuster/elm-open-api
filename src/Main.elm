@@ -1,6 +1,7 @@
-module Main exposing (main)
+port module Main exposing (main)
 
-import Html exposing (Html, text)
+import Html exposing (Html, button, text)
+import Html.Events exposing (onClick)
 
 
 main : Program Never State Msg
@@ -80,7 +81,10 @@ update msg state =
             state ! []
 
         Export ->
-            state ! []
+            ( state, export "Testing" )
+
+
+port export : String -> Cmd msg
 
 
 subscriptions : State -> Sub Msg
@@ -90,4 +94,4 @@ subscriptions _ =
 
 view : State -> Html Msg
 view state =
-    text "hello world"
+    button [ onClick Export ] [ text "Export" ]
