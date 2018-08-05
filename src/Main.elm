@@ -1,7 +1,8 @@
 port module Main exposing (main)
 
 import Html exposing (Html, button, text)
-import Html.Events exposing (onClick)
+import Html.Events as Events
+import Json.Encode as JE
 
 
 main : Program Never State Msg
@@ -50,6 +51,77 @@ type DataType
     | JsonType
 
 
+type DirectoryChild
+    = FileChild File
+    | DirectoryChild Directory
+
+
+type File
+    = File FileName FileContent
+
+
+type FileName
+    = FileName String
+
+
+type FileContent
+    = FileContent String
+
+
+type Directory
+    = Directory DirectoryName (List DirectoryChild)
+
+
+type DirectoryName
+    = DirectoryName String
+
+
+encodeDirectory : Directory -> JE.Value
+encodeDirectory (Directory name children) =
+    JE.object [ ( "type", JE.string "directory" ), ( "name", encodeDirectoryName name ), ( "children", JE.list (List.map encodeDirectoryChild children) ) ]
+
+
+encodeDirectoryName : DirectoryName -> JE.Value
+encodeDirectoryName (DirectoryName name) =
+    JE.string name
+
+
+encodeFile : File -> JE.Value
+encodeFile (File fileName fileContent) =
+    JE.object [ ( "type", JE.string "file" ), ( "name", encodeFileName fileName ), ( "content", encodeFileContent fileContent ) ]
+
+
+encodeFileName : FileName -> JE.Value
+encodeFileName (FileName name) =
+    JE.string name
+
+
+encodeFileContent : FileContent -> JE.Value
+encodeFileContent (FileContent content) =
+    JE.string content
+
+
+encodeDirectoryChild : DirectoryChild -> JE.Value
+encodeDirectoryChild directoryChild =
+    case directoryChild of
+        FileChild file ->
+            encodeFile file
+
+        DirectoryChild directory ->
+            encodeDirectory directory
+
+
+appToDirectory : App -> Directory
+appToDirectory app =
+    Directory (DirectoryName "test-app")
+        [ DirectoryChild
+            (Directory (DirectoryName "models")
+                [ FileChild (File (FileName "user.js") (FileContent "this is the file content"))
+                ]
+            )
+        ]
+
+
 type State
     = State (List App) App
 
@@ -75,16 +147,16 @@ type Msg
 
 
 update : Msg -> State -> ( State, Cmd Msg )
-update msg state =
+update msg ((State apps app) as state) =
     case msg of
         NoOp ->
             state ! []
 
         Export ->
-            ( state, export "Testing" )
+            ( state, app |> appToDirectory |> encodeDirectory |> export )
 
 
-port export : String -> Cmd msg
+port export : JE.Value -> Cmd msg
 
 
 subscriptions : State -> Sub Msg
@@ -94,4 +166,4 @@ subscriptions _ =
 
 view : State -> Html Msg
 view state =
-    button [ onClick Export ] [ text "Export" ]
+    button [ Events.onClick Export ] [ text "Export" ]
