@@ -11,23 +11,31 @@
   </head>
   <body>
     <script src="elm.js"></script>
-    <script>
-      const app = Elm.Main.fullscreen()
+<script>
+/* global Elm, JSZip, saveAs */
+const app = Elm.Main.fullscreen();
 
-      app.ports.export.subscribe(({ name, children }) =>
-        createZip(new JSZip(), children)
-          .generateAsync({ type: 'blob'})
-          .then(blob => saveAs(blob, name))
-      )
+app.ports.zip.subscribe(([name, file]) =>
+  zip(new JSZip(), file)
+    .generateAsync({ type: 'blob' })
+    .then(blob => saveAs(blob, name))
+)
 
-      function createZip (zip, children) {
-        children.forEach(({ type, name, children, content }) => {
-          if (type === 'directory') createZip(zip.folder(name), children)
-          if (type === 'file') zip.file(name, content)
-        })
-        return zip
-      }
-    </script>
+function zip (zip, file) {
+  switch (file.type) {
+    case 'root':
+      file.files.forEach(zip.bind(null, zip))
+      return zip
+    case 'directory':
+      const directory = zip.folder(file.name)
+      file.files.forEach(zip.bind(null, directory))
+      return zip
+    case 'file':
+      zip.file(file.name, file.content)
+      return zip
+  }
+}
+</script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js" async></script>
     <script src="https://fastcdn.org/FileSaver.js/1.1.20151003/FileSaver.min.js"></script>
   </body>

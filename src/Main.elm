@@ -1,5 +1,6 @@
 port module Main exposing (main)
 
+import File exposing (File)
 import Html exposing (Html, button, text)
 import Html.Events as Events
 import Json.Encode as JE
@@ -51,74 +52,15 @@ type DataType
     | JsonType
 
 
-type DirectoryChild
-    = FileChild File
-    | DirectoryChild Directory
-
-
-type File
-    = File FileName FileContent
-
-
-type FileName
-    = FileName String
-
-
-type FileContent
-    = FileContent String
-
-
-type Directory
-    = Directory DirectoryName (List DirectoryChild)
-
-
-type DirectoryName
-    = DirectoryName String
-
-
-encodeDirectory : Directory -> JE.Value
-encodeDirectory (Directory name children) =
-    JE.object [ ( "type", JE.string "directory" ), ( "name", encodeDirectoryName name ), ( "children", JE.list (List.map encodeDirectoryChild children) ) ]
-
-
-encodeDirectoryName : DirectoryName -> JE.Value
-encodeDirectoryName (DirectoryName name) =
-    JE.string name
-
-
-encodeFile : File -> JE.Value
-encodeFile (File fileName fileContent) =
-    JE.object [ ( "type", JE.string "file" ), ( "name", encodeFileName fileName ), ( "content", encodeFileContent fileContent ) ]
-
-
-encodeFileName : FileName -> JE.Value
-encodeFileName (FileName name) =
-    JE.string name
-
-
-encodeFileContent : FileContent -> JE.Value
-encodeFileContent (FileContent content) =
-    JE.string content
-
-
-encodeDirectoryChild : DirectoryChild -> JE.Value
-encodeDirectoryChild directoryChild =
-    case directoryChild of
-        FileChild file ->
-            encodeFile file
-
-        DirectoryChild directory ->
-            encodeDirectory directory
-
-
-appToDirectory : App -> Directory
-appToDirectory app =
-    Directory (DirectoryName "test-app")
-        [ DirectoryChild
-            (Directory (DirectoryName "models")
-                [ FileChild (File (FileName "user.js") (FileContent "this is the file content"))
-                ]
-            )
+testFile : File
+testFile =
+    File.root
+        [ File.directory (File.name "models")
+            [ File.file (File.name "user.js")
+                (File.content "module.exports = { user: { name: 'Tom' } }")
+            ]
+        , File.file (File.name "index.js")
+            (File.content "const user = require('./models/user.js')")
         ]
 
 
@@ -153,10 +95,15 @@ update msg ((State apps app) as state) =
             state ! []
 
         Export ->
-            ( state, app |> appToDirectory |> encodeDirectory |> export )
+            ( state, zipFile testFile )
 
 
-port export : JE.Value -> Cmd msg
+port zip : ( String, JE.Value ) -> Cmd msg
+
+
+zipFile : File -> Cmd msg
+zipFile =
+    File.encode >> (,) "test-app" >> zip
 
 
 subscriptions : State -> Sub Msg
