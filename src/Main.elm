@@ -1,55 +1,13 @@
 port module Main exposing (main)
 
+import App exposing (App)
 import File exposing (File)
 import Html exposing (Html, button, text)
 import Html.Events as Events
 import Json.Encode as JE
 
 
-main : Program Never State Msg
-main =
-    Html.program
-        { init = init
-        , update = update
-        , subscriptions = subscriptions
-        , view = view
-        }
-
-
-type App
-    = App AppName (List Model)
-
-
-type AppName
-    = AppName String
-
-
-type Model
-    = Model ModelName (List Field)
-
-
-type ModelName
-    = ModelName String
-
-
-type Field
-    = Field FieldName DataType
-
-
-type FieldName
-    = FieldName String
-
-
-type DataType
-    = IntType
-    | FloatType
-    | StringType
-    | TextType
-    | BoolType
-    | DateType
-    | DateTimeType
-    | ArrayType
-    | JsonType
+-- Sample Data
 
 
 testFile : File
@@ -64,23 +22,47 @@ testFile =
         ]
 
 
+
+-- Program
+
+
+main : Program Never State Msg
+main =
+    Html.program
+        { init = init
+        , update = update
+        , subscriptions = subscriptions
+        , view = view
+        }
+
+
+
+-- State
+
+
 type State
     = State (List App) App
 
 
-newApp : String -> App
-newApp name =
-    App (AppName name) []
-
-
 initialState : State
 initialState =
-    State [] (newApp "Blog")
+    State [] App.empty
 
 
 init : ( State, Cmd msg )
 init =
     initialState ! []
+
+
+
+-- Ports
+
+
+port zip : ( String, JE.Value ) -> Cmd msg
+
+
+
+-- Update
 
 
 type Msg
@@ -98,17 +80,22 @@ update msg ((State apps app) as state) =
             ( state, zipFile testFile )
 
 
-port zip : ( String, JE.Value ) -> Cmd msg
-
-
 zipFile : File -> Cmd msg
 zipFile =
     File.encode >> (,) "test-app" >> zip
 
 
+
+-- Subscriptions
+
+
 subscriptions : State -> Sub Msg
 subscriptions _ =
     Sub.none
+
+
+
+-- View
 
 
 view : State -> Html Msg
