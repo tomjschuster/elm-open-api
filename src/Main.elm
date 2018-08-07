@@ -10,16 +10,15 @@ import Json.Encode as JE
 -- Sample Data
 
 
-testFile : File
+testFile : List File
 testFile =
-    File.root
-        [ File.directory (File.name "models")
-            [ File.file (File.name "user.js")
-                (File.content "module.exports = { user: { name: 'Tom' } }")
-            ]
-        , File.file (File.name "index.js")
-            (File.content "const user = require('./models/user.js')")
+    [ File.directory (File.name "models")
+        [ File.file (File.name "user.js")
+            (File.content "module.exports = { user: { name: 'Tom' } }")
         ]
+    , File.file (File.name "index.js")
+        (File.content "const user = require('./models/user.js')")
+    ]
 
 
 
@@ -80,9 +79,9 @@ update msg ((State apps app) as state) =
             ( state, zipFile testFile )
 
 
-zipFile : File -> Cmd msg
+zipFile : List File -> Cmd msg
 zipFile =
-    File.encode >> (,) "test-app" >> zip
+    List.map File.encode >> JE.list >> (,) "test-app" >> zip
 
 
 
