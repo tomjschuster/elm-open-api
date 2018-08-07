@@ -1,4 +1,4 @@
-port module Main exposing (main)
+port module Main exposing (main, testFile)
 
 import App exposing (App)
 import File exposing (File)
@@ -12,11 +12,11 @@ import Json.Encode as JE
 
 testFile : List File
 testFile =
-    [ File.directory (File.name "models")
-        [ File.file (File.name "user.js")
+    [ File.directory "models"
+        [ File.file "user.js"
             (File.content "module.exports = { user: { name: 'Tom' } }")
         ]
-    , File.file (File.name "index.js")
+    , File.file "index.js"
         (File.content "const user = require('./models/user.js')")
     ]
 

@@ -1,4 +1,4 @@
-module File exposing (File, content, directory, encode, file, name)
+module File exposing (File, add, addToList, content, directory, empty, encode, file, name)
 
 import Json.Encode as JE
 
@@ -8,54 +8,109 @@ type File
     | Directory Name (List File)
 
 
-type Name
-    = Name String
+type alias Name =
+    String
 
 
 type Content
     = Content String
 
 
-type Path
-    = Path (List String)
+type alias Path =
+    List Name
 
 
-add : File -> Path -> File -> Result String File
+type Error
+    = NotFound
+    | AlreadyExists
+    | MultipleFound
+    | AddFileToFile
+
+
+empty : Name -> File
+empty fileName =
+    File fileName emptyContent
+
+
+name : File -> Name
+name file =
+    case file of
+        File name _ ->
+            name
+
+        Directory name _ ->
+            name
+
+
+add : File -> Path -> File -> Result Error File
 add newFile path file =
     case file of
         File _ _ ->
-            Err "Files can only be added to root or directory"
+            Err AddFileToFile
 
-        Directory name files ->
+        Directory dirName files ->
             case shiftPath path of
-                ( Nothing, _ ) ->
-                    Ok (Directory name (files ++ [ file ]))
+                ( Just pathName, remainingPath ) ->
+                    if pathName == dirName then
+                        files
+                            |> addToList newFile remainingPath
+                            |> Result.map (Directory dirName)
+                    else
+                        Err NotFound
 
-                ( Just ".", Path [] ) ->
-                    Ok (Directory name (files ++ [ file ]))
-
-                ( Just name, files ) ->
-                    Err "do something"
-
-
-nameMatches : String -> Name -> Bool
-nameMatches nameString (Name matchName) =
-    nameString == matchName
+                ( Nothing, remainingPath ) ->
+                    Err NotFound
 
 
-pathLength : Path -> Int
-pathLength (Path path) =
-    List.length path
+addToList : File -> Path -> List File -> Result Error (List File)
+addToList file path files =
+    if List.any (nameMatches (name file)) files then
+        Err AlreadyExists
+    else
+        case shiftPath path of
+            ( Nothing, _ ) ->
+                Ok (files ++ [ file ])
+
+            ( Just ".", [] ) ->
+                Ok (files ++ [ file ])
+
+            ( Just pathName, remainingPath ) ->
+                let
+                    ( result, found ) =
+                        List.foldr
+                            (\currFile ( files, added ) ->
+                                case ( nameMatches pathName currFile, added ) of
+                                    ( True, True ) ->
+                                        ( Err MultipleFound, True )
+
+                                    ( True, False ) ->
+                                        ( Result.map2 (::) (add file remainingPath currFile) files, True )
+
+                                    ( False, _ ) ->
+                                        ( Result.map (\xs -> currFile :: xs) files, added )
+                            )
+                            ( Ok [], False )
+                            files
+                in
+                if found then
+                    result
+                else
+                    Err NotFound
+
+
+nameMatches : Name -> File -> Bool
+nameMatches nameString file =
+    nameString == name file
 
 
 shiftPath : Path -> ( Maybe String, Path )
-shiftPath (Path path) =
+shiftPath path =
     case path of
         [] ->
-            ( Nothing, Path path )
+            ( Nothing, path )
 
         x :: xs ->
-            ( Just x, Path xs )
+            ( Just x, xs )
 
 
 file : Name -> Content -> File
@@ -68,9 +123,9 @@ directory name files =
     Directory name files
 
 
-name : String -> Name
-name value =
-    Name value
+emptyContent : Content
+emptyContent =
+    Content ""
 
 
 content : String -> Content
@@ -97,7 +152,7 @@ encode file =
 
 
 encodeName : Name -> JE.Value
-encodeName (Name name) =
+encodeName name =
     JE.string name
 
 
