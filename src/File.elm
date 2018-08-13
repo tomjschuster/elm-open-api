@@ -1,6 +1,19 @@
-module File exposing (File, add, addToList, content, directory, empty, encode, file, name)
+module File
+    exposing
+        ( File
+        , add
+        , addToList
+        , empty
+        , emptyDirectory
+        , encode
+        , new
+        , newDirectory
+        )
 
 import Json.Encode as JE
+
+
+-- Types
 
 
 type File
@@ -12,24 +25,96 @@ type alias Name =
     String
 
 
-type Content
-    = Content String
+type alias Content =
+    String
 
 
 type alias Path =
     List Name
 
 
-type Error
-    = NotFound
-    | AlreadyExists
-    | MultipleFound
-    | AddFileToFile
+
+-- Build
 
 
 empty : Name -> File
 empty fileName =
-    File fileName emptyContent
+    File fileName ""
+
+
+new : Name -> Content -> File
+new fileName fileContent =
+    File fileName fileContent
+
+
+emptyDirectory : Name -> File
+emptyDirectory dirName =
+    Directory dirName []
+
+
+newDirectory : Name -> List File -> File
+newDirectory dirName files =
+    Directory dirName files
+
+
+add : File -> Path -> File -> Result String File
+add newFile path destinationFile =
+    case destinationFile of
+        File _ _ ->
+            Err "Adding a file to non-directory"
+
+        Directory dirName files ->
+            case path of
+                [] ->
+                    Ok (Directory dirName (files ++ [ newFile ]))
+
+                [ "." ] ->
+                    Ok (Directory dirName (files ++ [ newFile ]))
+
+                "." :: remainingPath ->
+                    add newFile remainingPath destinationFile
+
+                pathName :: remainingPath ->
+                    files
+                        |> addToList newFile pathName remainingPath
+                        |> Result.map (Directory dirName)
+
+
+addToList : File -> Name -> Path -> List File -> Result String (List File)
+addToList newFile pathName remainingPath files =
+    let
+        ( result, found ) =
+            List.foldr
+                (\currentFile ( files, added ) ->
+                    case ( nameMatches pathName currentFile, added ) of
+                        ( True, False ) ->
+                            ( Result.map2 (::)
+                                (add newFile remainingPath currentFile)
+                                files
+                            , True
+                            )
+
+                        _ ->
+                            ( Result.map ((::) currentFile) files, added )
+                )
+                ( Ok [], False )
+                files
+    in
+    if found then
+        result
+    else
+        emptyDirectory pathName
+            |> add newFile remainingPath
+            |> Result.map (List.singleton >> (++) files)
+
+
+
+-- Query
+
+
+nameMatches : Name -> File -> Bool
+nameMatches nameString file =
+    nameString == name file
 
 
 name : File -> Name
@@ -42,95 +127,8 @@ name file =
             name
 
 
-add : File -> Path -> File -> Result Error File
-add newFile path file =
-    case file of
-        File _ _ ->
-            Err AddFileToFile
 
-        Directory dirName files ->
-            case shiftPath path of
-                ( Just pathName, remainingPath ) ->
-                    if pathName == dirName then
-                        files
-                            |> addToList newFile remainingPath
-                            |> Result.map (Directory dirName)
-                    else
-                        Err NotFound
-
-                ( Nothing, remainingPath ) ->
-                    Err NotFound
-
-
-addToList : File -> Path -> List File -> Result Error (List File)
-addToList file path files =
-    if List.any (nameMatches (name file)) files then
-        Err AlreadyExists
-    else
-        case shiftPath path of
-            ( Nothing, _ ) ->
-                Ok (files ++ [ file ])
-
-            ( Just ".", [] ) ->
-                Ok (files ++ [ file ])
-
-            ( Just pathName, remainingPath ) ->
-                let
-                    ( result, found ) =
-                        List.foldr
-                            (\currFile ( files, added ) ->
-                                case ( nameMatches pathName currFile, added ) of
-                                    ( True, True ) ->
-                                        ( Err MultipleFound, True )
-
-                                    ( True, False ) ->
-                                        ( Result.map2 (::) (add file remainingPath currFile) files, True )
-
-                                    ( False, _ ) ->
-                                        ( Result.map (\xs -> currFile :: xs) files, added )
-                            )
-                            ( Ok [], False )
-                            files
-                in
-                if found then
-                    result
-                else
-                    Err NotFound
-
-
-nameMatches : Name -> File -> Bool
-nameMatches nameString file =
-    nameString == name file
-
-
-shiftPath : Path -> ( Maybe String, Path )
-shiftPath path =
-    case path of
-        [] ->
-            ( Nothing, path )
-
-        x :: xs ->
-            ( Just x, xs )
-
-
-file : Name -> Content -> File
-file name content =
-    File name content
-
-
-directory : Name -> List File -> File
-directory name files =
-    Directory name files
-
-
-emptyContent : Content
-emptyContent =
-    Content ""
-
-
-content : String -> Content
-content value =
-    Content value
+-- Encode
 
 
 encode : File -> JE.Value
@@ -139,23 +137,13 @@ encode file =
         File name content ->
             JE.object
                 [ ( "type", JE.string "file" )
-                , ( "name", encodeName name )
-                , ( "content", encodeContent content )
+                , ( "name", JE.string name )
+                , ( "content", JE.string content )
                 ]
 
         Directory name files ->
             JE.object
                 [ ( "type", JE.string "directory" )
-                , ( "name", encodeName name )
+                , ( "name", JE.string name )
                 , ( "files", JE.list (List.map encode files) )
                 ]
-
-
-encodeName : Name -> JE.Value
-encodeName name =
-    JE.string name
-
-
-encodeContent : Content -> JE.Value
-encodeContent (Content content) =
-    JE.string content

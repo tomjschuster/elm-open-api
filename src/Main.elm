@@ -12,12 +12,10 @@ import Json.Encode as JE
 
 testFile : List File
 testFile =
-    [ File.directory "models"
-        [ File.file "user.js"
-            (File.content "module.exports = { user: { name: 'Tom' } }")
+    [ File.newDirectory "models"
+        [ File.new "user.js" "module.exports = { user: { name: 'Tom' } }"
         ]
-    , File.file "index.js"
-        (File.content "const user = require('./models/user.js')")
+    , File.new "index.js" "const user = require('./models/user.js')"
     ]
 
 
