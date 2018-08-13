@@ -1,4 +1,6 @@
-module App exposing (App, DataType, Field, Model, empty)
+module App exposing (App, AppType(..), DataType, Field, Model, empty, toFiles)
+
+import File exposing (File)
 
 
 type App
@@ -13,13 +15,12 @@ type Field
     = Field Name DataType
 
 
-type Name
-    = Name String
+type alias Name =
+    String
 
 
-emptyName : Name
-emptyName =
-    Name ""
+type AppType
+    = Sequelize
 
 
 type DataType
@@ -36,4 +37,18 @@ type DataType
 
 empty : App
 empty =
-    App emptyName []
+    App "" []
+
+
+toFiles : AppType -> App -> List File
+toFiles appType app =
+    case appType of
+        Sequelize ->
+            [ File.directory "server"
+                [ File.directory "db"
+                    [ File.directory "models"
+                        [ File.file "user.js" "module.exports = { user: { name: 'Tom' } }" ]
+                    , File.file "index.js" "const user = require('./models/user.js')"
+                    ]
+                ]
+            ]

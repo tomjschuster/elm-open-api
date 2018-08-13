@@ -1,14 +1,4 @@
-module File
-    exposing
-        ( File
-        , add
-        , addToList
-        , empty
-        , emptyDirectory
-        , encode
-        , new
-        , newDirectory
-        )
+module File exposing (File, add, addToList, directory, encode, file)
 
 import Json.Encode as JE
 
@@ -37,23 +27,13 @@ type alias Path =
 -- Build
 
 
-empty : Name -> File
-empty fileName =
-    File fileName ""
-
-
-new : Name -> Content -> File
-new fileName fileContent =
+file : Name -> Content -> File
+file fileName fileContent =
     File fileName fileContent
 
 
-emptyDirectory : Name -> File
-emptyDirectory dirName =
-    Directory dirName []
-
-
-newDirectory : Name -> List File -> File
-newDirectory dirName files =
+directory : Name -> List File -> File
+directory dirName files =
     Directory dirName files
 
 
@@ -67,12 +47,6 @@ add newFile path destinationFile =
             case path of
                 [] ->
                     Ok (Directory dirName (files ++ [ newFile ]))
-
-                [ "." ] ->
-                    Ok (Directory dirName (files ++ [ newFile ]))
-
-                "." :: remainingPath ->
-                    add newFile remainingPath destinationFile
 
                 pathName :: remainingPath ->
                     files
@@ -103,7 +77,7 @@ addToList newFile pathName remainingPath files =
     if found then
         result
     else
-        emptyDirectory pathName
+        directory pathName []
             |> add newFile remainingPath
             |> Result.map (List.singleton >> (++) files)
 

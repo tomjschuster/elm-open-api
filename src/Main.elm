@@ -1,23 +1,10 @@
-port module Main exposing (main, testFile)
+port module Main exposing (main)
 
 import App exposing (App)
 import File exposing (File)
 import Html exposing (Html, button, text)
 import Html.Events as Events
 import Json.Encode as JE
-
-
--- Sample Data
-
-
-testFile : List File
-testFile =
-    [ File.newDirectory "models"
-        [ File.new "user.js" "module.exports = { user: { name: 'Tom' } }"
-        ]
-    , File.new "index.js" "const user = require('./models/user.js')"
-    ]
-
 
 
 -- Program
@@ -74,11 +61,11 @@ update msg ((State apps app) as state) =
             state ! []
 
         Export ->
-            ( state, zipFile testFile )
+            ( state, app |> App.toFiles App.Sequelize |> zipFiles )
 
 
-zipFile : List File -> Cmd msg
-zipFile =
+zipFiles : List File -> Cmd msg
+zipFiles =
     List.map File.encode >> JE.list >> (,) "test-app" >> zip
 
 
