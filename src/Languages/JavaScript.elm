@@ -10,6 +10,7 @@ module Languages.JavaScript
         , moduleExports
         , namedFunction
         , object
+        , property
         , require
         , return
         , set
@@ -19,6 +20,7 @@ module Languages.JavaScript
         )
 
 import Doc exposing ((|+), Doc)
+import Regex exposing (Regex)
 import String.Extra
 
 
@@ -47,12 +49,6 @@ set objectKey expression =
         |+ equals
         |+ expression
         |+ semicolon
-
-
-require : String -> Doc
-require path =
-    Doc.string "require"
-        |+ Doc.parens (string path)
 
 
 moduleExports : Doc -> Doc
@@ -130,6 +126,17 @@ block body =
 
 
 
+-- Other
+
+
+require : String -> Doc
+require path =
+    Doc.string "require"
+        |+ Doc.parens (string path)
+
+
+
+{- Expressions -}
 -- Data Types
 
 
@@ -147,6 +154,24 @@ object keyValues =
         |> List.map (uncurry keyValue)
         |> Doc.join comma
         |> Doc.braces
+
+
+property : String -> Doc -> Doc
+property name object =
+    if onlyWordChars name then
+        object |+ dot |+ Doc.string name
+    else
+        object |+ Doc.brackets (string name)
+
+
+onlyWordChars : String -> Bool
+onlyWordChars value =
+    Regex.contains nonASCIIRegex value
+
+
+nonASCIIRegex : Regex
+nonASCIIRegex =
+    Regex.regex "^[_$a-zA-Z\\xA0-\\uFFFF][_$a-zA-Z0-9 -\\uFFFF]*$"
 
 
 array : List Doc -> Doc
@@ -174,7 +199,7 @@ useStrict =
 
 
 
--- Character Helpers
+{- Grammar -}
 
 
 fatArrow : Doc
@@ -200,3 +225,8 @@ colon =
 semicolon : Doc
 semicolon =
     Doc.char ';'
+
+
+dot : Doc
+dot =
+    Doc.char '.'
