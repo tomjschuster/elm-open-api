@@ -18,17 +18,7 @@ module Languages.JavaScript
         , var
         )
 
-import Doc
-    exposing
-        ( (|+)
-        , Doc
-        , braces
-        , brackets
-        , char
-        , join
-        , parens
-        , space
-        )
+import Doc exposing ((|+), Doc)
 import String.Extra
 
 
@@ -62,7 +52,7 @@ set objectKey expression =
 require : String -> Doc
 require path =
     Doc.string "require"
-        |+ parens (string path)
+        |+ Doc.parens (string path)
 
 
 moduleExports : Doc -> Doc
@@ -73,7 +63,7 @@ moduleExports expression =
 declare : String -> String -> Doc -> Doc
 declare label variable expression =
     Doc.string label
-        |+ space
+        |+ Doc.space
         |+ Doc.string variable
         |+ equals
         |+ expression
@@ -94,7 +84,7 @@ function argList body =
 namedFunction : String -> List String -> Doc -> Doc
 namedFunction name argList body =
     Doc.string "function"
-        |+ space
+        |+ Doc.space
         |+ Doc.string name
         |+ args argList
         |+ block body
@@ -117,7 +107,7 @@ conciseArrowFunction argList body =
 return : Doc -> Doc
 return expression =
     Doc.string "return"
-        |+ space
+        |+ Doc.space
         |+ expression
         |+ semicolon
 
@@ -126,8 +116,8 @@ args : List String -> Doc
 args argList =
     argList
         |> List.map Doc.string
-        |> join comma
-        |> parens
+        |> Doc.join comma
+        |> Doc.parens
 
 
 
@@ -136,7 +126,7 @@ args argList =
 
 block : Doc -> Doc
 block body =
-    braces body
+    Doc.braces body
 
 
 
@@ -155,15 +145,15 @@ object : List ( String, Doc ) -> Doc
 object keyValues =
     keyValues
         |> List.map (uncurry keyValue)
-        |> join comma
-        |> braces
+        |> Doc.join comma
+        |> Doc.braces
 
 
 array : List Doc -> Doc
 array expressions =
     expressions
-        |> join comma
-        |> brackets
+        |> Doc.join comma
+        |> Doc.brackets
 
 
 keyValue : String -> Doc -> Doc
@@ -194,19 +184,19 @@ fatArrow =
 
 comma : Doc
 comma =
-    char ','
+    Doc.char ','
 
 
 equals : Doc
 equals =
-    char '='
+    Doc.char '='
 
 
 colon : Doc
 colon =
-    char ':'
+    Doc.char ':'
 
 
 semicolon : Doc
 semicolon =
-    char ';'
+    Doc.char ';'
