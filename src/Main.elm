@@ -1,6 +1,7 @@
 port module Main exposing (main)
 
 import App exposing (App)
+import App.Sequelize
 import File exposing (File)
 import Html exposing (Html, button, text)
 import Html.Events as Events
@@ -30,7 +31,7 @@ type State
 
 initialState : State
 initialState =
-    State [] App.empty
+    State [] App.sampleApp
 
 
 init : ( State, Cmd msg )
@@ -61,7 +62,14 @@ update msg ((State apps app) as state) =
             state ! []
 
         Export ->
-            ( state, app |> App.toFiles App.Sequelize |> zipFiles )
+            ( state, app |> appToFiles App.Sequelize |> zipFiles )
+
+
+appToFiles : App.AppType -> App -> List File
+appToFiles appType app =
+    case appType of
+        App.Sequelize ->
+            App.Sequelize.toFiles app
 
 
 zipFiles : List File -> Cmd msg

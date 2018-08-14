@@ -1,6 +1,41 @@
-module App exposing (App, AppType(..), DataType, Field, Model, empty, toFiles)
+module App
+    exposing
+        ( App
+        , AppType(..)
+        , DataType
+        , Field
+        , Model
+        , Name
+        , dataType
+        , empty
+        , fieldName
+        , fields
+        , modelName
+        , models
+        , name
+        , sampleApp
+        )
 
-import File exposing (File)
+
+sampleApp : App
+sampleApp =
+    App "blog"
+        [ Model "user"
+            [ Field "email" StringType
+            , Field "name" StringType
+            , Field "isAdmin" BoolType
+            ]
+        , Model "post"
+            [ Field "title" StringType
+            , Field "content" TextType
+            , Field "isPublished" BoolType
+            , Field "dateCreated" DateType
+            ]
+        ]
+
+
+
+-- Types
 
 
 type App
@@ -35,20 +70,44 @@ type DataType
     | JsonType
 
 
+
+-- Build
+
+
 empty : App
 empty =
     App "" []
 
 
-toFiles : AppType -> App -> List File
-toFiles appType app =
-    case appType of
-        Sequelize ->
-            [ File.directory "server"
-                [ File.directory "db"
-                    [ File.directory "models"
-                        [ File.file "user.js" "module.exports = { user: { name: 'Tom' } }" ]
-                    , File.file "index.js" "const user = require('./models/user.js')"
-                    ]
-                ]
-            ]
+
+-- Read
+
+
+name : App -> Name
+name (App name_ _) =
+    name_
+
+
+models : App -> List Model
+models (App _ models_) =
+    models_
+
+
+modelName : Model -> Name
+modelName (Model name_ _) =
+    name_
+
+
+fields : Model -> List Field
+fields (Model _ fields_) =
+    fields_
+
+
+fieldName : Field -> Name
+fieldName (Field name_ _) =
+    name_
+
+
+dataType : Field -> DataType
+dataType (Field name_ dataType_) =
+    dataType_
