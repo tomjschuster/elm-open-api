@@ -1,4 +1,4 @@
-module File exposing (File, add, addToList, directory, encode, file)
+module File exposing (Content, File, Name, add, addToList, directory, encode, file)
 
 import Json.Encode as JE
 
