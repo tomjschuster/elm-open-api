@@ -3,6 +3,7 @@ module Languages.JavaScript
         ( array
         , arrowFunction
         , block
+        , blockComment
         , conciseArrowFunction
         , const
         , function
@@ -16,9 +17,11 @@ module Languages.JavaScript
         , require
         , return
         , set
+        , singleComment
         , string
         , useStrict
         , var
+        , variable
         )
 
 import Doc exposing ((|+), Doc)
@@ -45,9 +48,14 @@ const variable expression =
     declare "const" variable expression
 
 
-set : String -> Doc -> Doc
-set objectKey expression =
-    Doc.string objectKey
+variable : String -> Doc
+variable variable =
+    Doc.string variable
+
+
+set : Doc -> Doc -> Doc
+set expression variable =
+    variable
         |+ equals
         |+ expression
         |+ semicolon
@@ -55,7 +63,9 @@ set objectKey expression =
 
 moduleExports : Doc -> Doc
 moduleExports expression =
-    set "module.exports" expression
+    variable "module"
+        |> property "exports"
+        |> set expression
 
 
 declare : String -> String -> Doc -> Doc
@@ -72,34 +82,34 @@ declare label variable expression =
 -- Functions
 
 
-function : List String -> Doc -> Doc
-function argList body =
+function : List String -> List Doc -> Doc
+function argList statements =
     Doc.string "function"
         |+ declareArgs argList
-        |+ block body
+        |+ block statements
 
 
-namedFunction : String -> List String -> Doc -> Doc
-namedFunction name argList body =
+namedFunction : String -> List String -> List Doc -> Doc
+namedFunction name argList statements =
     Doc.string "function"
         |+ Doc.space
         |+ Doc.string name
         |+ declareArgs argList
-        |+ block body
+        |+ block statements
 
 
-arrowFunction : List String -> Doc -> Doc
-arrowFunction argList body =
+arrowFunction : List String -> List Doc -> Doc
+arrowFunction argList statements =
     declareArgs argList
         |+ fatArrow
-        |+ block body
+        |+ block statements
 
 
 conciseArrowFunction : List String -> Doc -> Doc
-conciseArrowFunction argList body =
+conciseArrowFunction argList statement =
     declareArgs argList
         |+ fatArrow
-        |+ body
+        |+ statement
 
 
 return : Doc -> Doc
@@ -116,9 +126,11 @@ functionCall name callArgs =
         |+ Doc.parens (Doc.join comma callArgs)
 
 
-methodCall : String -> List Doc -> Doc
-methodCall name callArgs =
-    Doc.append dot (functionCall name callArgs)
+methodCall : String -> List Doc -> Doc -> Doc
+methodCall name callArgs object =
+    object
+        |+ dot
+        |+ functionCall name callArgs
 
 
 declareArgs : List String -> Doc
@@ -133,9 +145,9 @@ declareArgs argList =
 -- Control Flow
 
 
-block : Doc -> Doc
-block body =
-    Doc.braces body
+block : List Doc -> Doc
+block statements =
+    Doc.braces (Doc.join semicolon statements)
 
 
 
@@ -169,12 +181,12 @@ object keyValues =
         |> Doc.braces
 
 
-property : String -> Doc
-property name =
+property : String -> Doc -> Doc
+property name object =
     if onlyWordChars name then
-        dot |+ Doc.string name
+        object |+ dot |+ Doc.string name
     else
-        Doc.brackets (string name)
+        object |+ Doc.brackets (string name)
 
 
 onlyWordChars : String -> Bool
@@ -209,12 +221,25 @@ useStrict : Doc
 useStrict =
     string "use strict"
         |+ semicolon
-        |+ Doc.line
-        |+ Doc.line
 
 
 
 {- Grammar -}
+
+
+singleComment : String -> Doc
+singleComment comment =
+    Doc.line
+        |+ slash
+        |+ slash
+        |+ Doc.space
+        |+ Doc.string comment
+        |+ Doc.line
+
+
+blockComment : String -> Doc
+blockComment comment =
+    Doc.surround (Doc.string "/*") (Doc.string "*/") (Doc.string comment)
 
 
 fatArrow : Doc
@@ -245,3 +270,8 @@ semicolon =
 dot : Doc
 dot =
     Doc.char '.'
+
+
+slash : Doc
+slash =
+    Doc.char '/'
