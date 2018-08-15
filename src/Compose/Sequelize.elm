@@ -7,6 +7,21 @@ import Languages.JavaScript as JS
 import String.Extra
 
 
+toFiles : App -> List File
+toFiles app =
+    [ File.directory "config" []
+    , File.directory "migrations" []
+    , File.directory "models" <|
+        File.file "index.js" indexContent
+            :: List.map modelFile (App.models app)
+    , File.directory "seeders" []
+    ]
+
+
+
+-- Data Types
+
+
 type DataType
     = StringType
     | TextType
@@ -106,11 +121,8 @@ dataTypeConstant dataType =
                 |> JS.property "UUID"
 
 
-toFiles : App -> List File
-toFiles app =
-    [ File.directory "models"
-        (File.file "index.js" indexContent :: List.map modelFile (App.models app))
-    ]
+
+-- Models
 
 
 indexContent : String
@@ -164,40 +176,42 @@ modelFile model =
 
 modelFileName : App.Model -> File.Name
 modelFileName model =
-    String.Extra.classify (App.modelName model) ++ ".js"
-
-
-modelName : App.Model -> String
-modelName =
-    App.modelName >> String.Extra.classify
+    String.Extra.dasherize (App.modelName model) ++ ".js"
 
 
 modelContent : App.Model -> List Doc
 modelContent model =
+    let
+        modelName =
+            model |> App.modelName |> String.Extra.classify
+
+        fields =
+            App.fields model
+    in
     [ JS.useStrict
     , JS.moduleExports <|
         JS.arrowFunction [ "sequelize", "DataTypes" ]
-            [ declareModel model
-            , setAssociations model
-            , JS.return (JS.variable (modelName model))
+            [ declareModel modelName fields
+            , setAssociations modelName
+            , JS.return (JS.variable modelName)
             ]
     ]
 
 
-declareModel : App.Model -> Doc
-declareModel model =
+declareModel : String -> List App.Field -> Doc
+declareModel modelName fields =
     JS.variable "sequelize"
         |> JS.methodCall "define"
-            [ JS.string (App.modelName model)
-            , JS.object (List.map attributeKV (App.fields model))
+            [ JS.string modelName
+            , JS.object (List.map attributeKV fields)
             , JS.object []
             ]
-        |> JS.const (modelName model)
+        |> JS.const modelName
 
 
-setAssociations : App.Model -> Doc
-setAssociations model =
-    JS.variable (modelName model)
+setAssociations : String -> Doc
+setAssociations modelName =
+    JS.variable modelName
         |> JS.property "associate"
         |> JS.set (JS.function [ "models" ] [ associationsComment ])
 
