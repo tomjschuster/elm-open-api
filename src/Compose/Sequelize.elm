@@ -1,4 +1,4 @@
-module App.Sequelize exposing (toFiles)
+module Compose.Sequelize exposing (toFiles)
 
 import App exposing (App)
 import Doc exposing ((|+), Doc)
@@ -58,41 +58,52 @@ mapDataType dataType =
             UuidType
 
 
-dataTypeConstant : DataType -> String
+dataTypeConstant : DataType -> Doc
 dataTypeConstant dataType =
     case dataType of
         StringType ->
-            "DataTypes.STRING"
+            JS.variable "DataTypes"
+                |> JS.property "STRING"
 
         TextType ->
-            "DataTypes.TEXT"
+            JS.variable "DataTypes"
+                |> JS.property "TEXT"
 
         IntegerType ->
-            "DataTypes.INTEGER"
+            JS.variable "DataTypes"
+                |> JS.property "INTEGER"
 
         FloatType ->
-            "DataTypes.FLOAT"
+            JS.variable "DataTypes"
+                |> JS.property "FLOAT"
 
         DateTimeType ->
-            "DataTypes.DATETIME"
+            JS.variable "DataTypes"
+                |> JS.property "DATETIME"
 
         DateType ->
-            "DataTypes.DATE"
+            JS.variable "DataTypes"
+                |> JS.property "DATE"
 
         BooleanType ->
-            "DataTypes.BOOLEAN"
+            JS.variable "DataTypes"
+                |> JS.property "BOOLEAN"
 
         ArrayType arrayType ->
-            "DataTypes.ARRAY(" ++ dataTypeConstant arrayType ++ ")"
+            JS.variable "DataTypes"
+                |> JS.methodCall "ARRAY" [ dataTypeConstant arrayType ]
 
         JsonType ->
-            "DataTypes.JSON"
+            JS.variable "DataTypes"
+                |> JS.property "JSON"
 
         BlobType ->
-            "DataTypes.BLOB"
+            JS.variable "DataTypes"
+                |> JS.property "BLOB"
 
         UuidType ->
-            "DataTypes.UUID"
+            JS.variable "DataTypes"
+                |> JS.property "UUID"
 
 
 toFiles : App -> List File
@@ -111,7 +122,7 @@ const path = require('path');
 const Sequelize = require('sequelize');
 const basename = path.basename(__filename);
 const env = process.env.NODE_ENV || 'development';
-const config = require('/../config/config.json')[env];
+const config = require(_dirname + '/../config/config.json')[env];
 const db = {};
 
 let sequelize;
@@ -141,12 +152,14 @@ db.sequelize = sequelize;
 db.Sequelize = Sequelize;
 
 module.exports = db;
-    """
+"""
 
 
 modelFile : App.Model -> File
 modelFile model =
-    File.file (modelFileName model) (modelContent model)
+    File.file
+        (modelFileName model)
+        (Doc.toString <| Doc.concat <| modelContent model)
 
 
 modelFileName : App.Model -> File.Name
@@ -154,28 +167,48 @@ modelFileName model =
     String.Extra.classify (App.modelName model) ++ ".js"
 
 
-modelContent : App.Model -> String
+modelName : App.Model -> String
+modelName =
+    App.modelName >> String.Extra.classify
+
+
+modelContent : App.Model -> List Doc
 modelContent model =
-    Doc.toString <|
-        Doc.append JS.useStrict <|
-            JS.moduleExports <|
-                JS.arrowFunction [ "sequelize", "DataTypes" ] <|
-                    JS.const (App.modelName model) <|
-                        Doc.string "sequelize"
-                            |+ defineModel model
+    [ JS.useStrict
+    , JS.moduleExports <|
+        JS.arrowFunction [ "sequelize", "DataTypes" ]
+            [ declareModel model
+            , setAssociations model
+            , JS.return (JS.variable (modelName model))
+            ]
+    ]
 
 
-defineModel : App.Model -> Doc
-defineModel model =
-    Doc.string "sequelize"
-        |+ JS.methodCall "define"
+declareModel : App.Model -> Doc
+declareModel model =
+    JS.variable "sequelize"
+        |> JS.methodCall "define"
             [ JS.string (App.modelName model)
             , JS.object (List.map attributeKV (App.fields model))
+            , JS.object []
             ]
+        |> JS.const (modelName model)
+
+
+setAssociations : App.Model -> Doc
+setAssociations model =
+    JS.variable (modelName model)
+        |> JS.property "associate"
+        |> JS.set (JS.function [ "models" ] [ associationsComment ])
+
+
+associationsComment : Doc
+associationsComment =
+    JS.singleComment "associations can be defined here"
 
 
 attributeKV : App.Field -> ( String, Doc )
 attributeKV field =
     ( App.fieldName field
-    , field |> App.dataType |> mapDataType |> dataTypeConstant |> Doc.string
+    , field |> App.dataType |> mapDataType |> dataTypeConstant
     )

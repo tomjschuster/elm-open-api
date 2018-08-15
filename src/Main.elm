@@ -1,7 +1,7 @@
 port module Main exposing (main)
 
 import App exposing (App)
-import App.Sequelize
+import Compose.Sequelize
 import File exposing (File)
 import Html exposing (Html, button, text)
 import Html.Events as Events
@@ -69,7 +69,7 @@ appToFiles : App.AppType -> App -> List File
 appToFiles appType app =
     case appType of
         App.Sequelize ->
-            App.Sequelize.toFiles app
+            Compose.Sequelize.toFiles app
 
 
 zipFiles : List File -> Cmd msg
