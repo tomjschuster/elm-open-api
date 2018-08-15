@@ -2,7 +2,7 @@ module App
     exposing
         ( App
         , AppType(..)
-        , DataType
+        , DataType(..)
         , Field
         , Model
         , Name
@@ -23,12 +23,13 @@ sampleApp =
         [ Model "user"
             [ Field "email" StringType
             , Field "name" StringType
-            , Field "isAdmin" BoolType
+            , Field "isAdmin" BooleanType
+            , Field "aliases" (ArrayType StringType)
             ]
         , Model "post"
             [ Field "title" StringType
             , Field "content" TextType
-            , Field "isPublished" BoolType
+            , Field "isPublished" BooleanType
             , Field "dateCreated" DateType
             ]
         ]
@@ -59,15 +60,17 @@ type AppType
 
 
 type DataType
-    = IntType
-    | FloatType
-    | StringType
+    = StringType
     | TextType
-    | BoolType
-    | DateType
+    | IntegerType
+    | FloatType
     | DateTimeType
-    | ArrayType
+    | DateType
+    | BooleanType
+    | ArrayType DataType
     | JsonType
+    | BlobType
+    | UuidType
 
 
 
