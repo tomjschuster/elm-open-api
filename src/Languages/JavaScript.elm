@@ -6,7 +6,9 @@ module Languages.JavaScript
         , conciseArrowFunction
         , const
         , function
+        , functionCall
         , let_
+        , methodCall
         , moduleExports
         , namedFunction
         , object
@@ -73,7 +75,7 @@ declare label variable expression =
 function : List String -> Doc -> Doc
 function argList body =
     Doc.string "function"
-        |+ args argList
+        |+ declareArgs argList
         |+ block body
 
 
@@ -82,20 +84,20 @@ namedFunction name argList body =
     Doc.string "function"
         |+ Doc.space
         |+ Doc.string name
-        |+ args argList
+        |+ declareArgs argList
         |+ block body
 
 
 arrowFunction : List String -> Doc -> Doc
 arrowFunction argList body =
-    args argList
+    declareArgs argList
         |+ fatArrow
         |+ block body
 
 
 conciseArrowFunction : List String -> Doc -> Doc
 conciseArrowFunction argList body =
-    args argList
+    declareArgs argList
         |+ fatArrow
         |+ body
 
@@ -108,8 +110,19 @@ return expression =
         |+ semicolon
 
 
-args : List String -> Doc
-args argList =
+functionCall : String -> List Doc -> Doc
+functionCall name callArgs =
+    Doc.string name
+        |+ Doc.parens (Doc.join comma callArgs)
+
+
+methodCall : String -> List Doc -> Doc
+methodCall name callArgs =
+    Doc.append dot (functionCall name callArgs)
+
+
+declareArgs : List String -> Doc
+declareArgs argList =
     argList
         |> List.map Doc.string
         |> Doc.join comma
@@ -156,12 +169,12 @@ object keyValues =
         |> Doc.braces
 
 
-property : String -> Doc -> Doc
-property name object =
+property : String -> Doc
+property name =
     if onlyWordChars name then
-        object |+ dot |+ Doc.string name
+        dot |+ Doc.string name
     else
-        object |+ Doc.brackets (string name)
+        Doc.brackets (string name)
 
 
 onlyWordChars : String -> Bool
