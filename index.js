@@ -1,21 +1,25 @@
 /* global Elm, JSZip, saveAs, prettier, prettierPlugins */
 const app = Elm.Main.fullscreen()
-
 app.ports.zip.subscribe(zip)
 
 function zip ([name, files]) {
   const zip = new JSZip()
-  files.forEach(file => addFile(zip, file))
+  files.forEach(file => zipFile(zip, file))
   zip.generateAsync({ type: 'blob' }).then(blob => saveAs(blob, name))
 }
 
-function addFile (zip, file) {
-  if (file.type === 'directory') {
-    const directory = zip.folder(file.name)
-    file.files.forEach(currFile => addFile(directory, currFile))
-  } else {
-    zip.file(file.name, format(file.name, file.content))
-  }
+function zipFile (zip, file) {
+  if (file.type === 'directory') zipDirectory(zip, file)
+  else zipNormalFile(zip, file)
+}
+
+function zipNormalFile (zip, file) {
+  zip.file(file.name, format(file.name, file.content))
+}
+
+function zipDirectory (zip, directory) {
+  const folder = zip.folder(directory.name)
+  directory.files.forEach(currFile => zipFile(folder, currFile))
 }
 
 function format (name, content) {
