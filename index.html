@@ -10,29 +10,11 @@
   <meta name="keywords" content="code generation, sequelize, orm">
   </head>
   <body>
-    <script src="elm.js"></script>
-<script>
-/* global Elm, JSZip, saveAs */
-const app = Elm.Main.fullscreen();
-
-app.ports.zip.subscribe(([name, files]) => {
-  const zip = new JSZip()
-  files.forEach(file => addFile(zip, file))
-  zip.generateAsync({ type: 'blob' }).then(blob => saveAs(blob, name))
-})
-
-function addFile (zip, file) {
-  if (file.type === 'directory') {
-    const directory = zip.folder(file.name)
-    file.files.forEach(currFile => addFile(directory, currFile))
-  } else if (file.type === 'file') {
-    zip.file(file.name, file.content)
-  } else {
-    throw ('Invalid File Type ' + file.type)
-  }
-}
-</script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js" async></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
     <script src="https://fastcdn.org/FileSaver.js/1.1.20151003/FileSaver.min.js"></script>
+    <script src="https://unpkg.com/prettier@1.13.0/standalone.js"></script>
+    <script src="https://unpkg.com/prettier@1.13.0/parser-babylon.js"></script>
+    <script src="elm.js"></script>
+    <script src="index.js"></script>
   </body>
 </html>  

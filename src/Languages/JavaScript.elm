@@ -209,6 +209,8 @@ useStrict : Doc
 useStrict =
     string "use strict"
         |+ semicolon
+        |+ Doc.line
+        |+ Doc.line
 
 
 
