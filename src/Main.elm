@@ -1,8 +1,9 @@
 port module Main exposing (main)
 
 import App exposing (App)
-import Compose.Sequelize
 import File exposing (File)
+import Framework exposing (Framework)
+import Framework.Sequelize
 import Html exposing (Html, button, text)
 import Html.Events as Events
 import Json.Encode as JE
@@ -26,12 +27,12 @@ main =
 
 
 type State
-    = State (List App) App
+    = State (List App) App Framework
 
 
 initialState : State
 initialState =
-    State [] App.sampleApp
+    State [] App.sampleApp Framework.Sequelize
 
 
 init : ( State, Cmd msg )
@@ -56,20 +57,20 @@ type Msg
 
 
 update : Msg -> State -> ( State, Cmd Msg )
-update msg ((State apps app) as state) =
+update msg ((State apps app framework) as state) =
     case msg of
         NoOp ->
             state ! []
 
         Export ->
-            ( state, app |> appToFiles App.Sequelize |> zipFiles )
+            ( state, app |> generate framework |> zipFiles )
 
 
-appToFiles : App.AppType -> App -> List File
-appToFiles appType app =
-    case appType of
-        App.Sequelize ->
-            Compose.Sequelize.toFiles app
+generate : Framework -> App -> List File
+generate framework app =
+    case framework of
+        Framework.Sequelize ->
+            Framework.Sequelize.toFiles app
 
 
 zipFiles : List File -> Cmd msg

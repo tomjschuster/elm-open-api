@@ -1,9 +1,9 @@
-module Compose.Sequelize exposing (toFiles)
+module Framework.Sequelize exposing (toFiles)
 
 import App exposing (App)
 import Doc exposing ((|+), Doc)
 import File exposing (File)
-import Languages.JavaScript as JS
+import Language.JavaScript as JS
 import String.Extra
 
 

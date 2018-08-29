@@ -1,6 +1,6 @@
 {
     "version": "1.0.0",
-    "summary": "Web App Code Generator",
+    "summary": "Open API GUI and Generator",
     "repository": "https://github.com/tomjschuster/quick-app.git",
     "license": "BSD3",
     "source-directories": [

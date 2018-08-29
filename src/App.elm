@@ -1,7 +1,6 @@
 module App
     exposing
         ( App
-        , AppType(..)
         , DataType(..)
         , Field
         , Model
@@ -53,10 +52,6 @@ type Field
 
 type alias Name =
     String
-
-
-type AppType
-    = Sequelize
 
 
 type DataType

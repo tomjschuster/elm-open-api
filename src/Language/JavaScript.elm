@@ -1,4 +1,4 @@
-module Languages.JavaScript
+module Language.JavaScript
     exposing
         ( array
         , arrowFunction

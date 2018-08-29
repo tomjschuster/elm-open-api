@@ -1,4 +1,4 @@
-module Languages.JavaScript.Ast exposing (..)
+module Language.JavaScript.Ast exposing (..)
 
 import Doc exposing ((|+), Doc)
 
@@ -26,12 +26,7 @@ produce statement =
                 |+ produceDeclarators declarators
                 |+ Doc.char ';'
 
-        FunctionDeclaration params body ->
-            Doc.string "function"
-                |+ produceArguments params
-                |+ produceBlock body
-
-        NamedFunctionDeclaration name params body ->
+        FunctionDeclaration name params body ->
             Doc.string "function"
                 |+ Doc.space
                 |+ produceIdentifier name
@@ -125,8 +120,7 @@ type Statement
     | ExpressionStatement Expression
     | IfStatement Expression Statement Statement
     | VariableDeclaration DeclarationKind (List Declarator)
-    | FunctionDeclaration (List Identifier) Statement
-    | NamedFunctionDeclaration Identifier (List Identifier) Statement
+    | FunctionDeclaration Identifier (List Identifier) Statement
 
 
 type DeclarationKind
@@ -144,19 +138,23 @@ type alias Identifier =
 
 
 type Expression
-    = Identifier Identifier
+    = This
+    | GroupingOperator Expression
+    | Identifier Identifier
     | Literal Literal
     | ArrayExpression (List Expression)
     | ObjectExpression (List Property)
     | MemberExpression Expression Expression
-    | CallExpression Expression Expression (List Expression)
-      --| GroupingOperator Expression
-      --| UnaryExpression UnaryOperator Expression
-      --| BinaryExpression BinaryOperator Expression Expression
-      --| ConditionalExpression Expression Expression Expression
-    | AssignmentExpression Expression Expression
+    | CallExpression Expression (List Expression)
+    | NewExpression Identifier (List Expression)
+    | AssignmentExpression AssignmentOperator Expression Expression
+    | FunctionExpression (List Identifier) Statement
     | ArrowFunction (List Identifier) Statement
     | ConciseArrowFunction (List Identifier) Expression
+    | UnaryExpression UnaryOperator Expression
+    | BinaryExpression BinaryOperator Expression Expression
+    | TernaryExpression Expression Expression Expression
+    | CommaOperator (List Expression)
 
 
 type Literal
@@ -172,42 +170,77 @@ type Property
     = Property Expression Expression
 
 
+type UnaryOperator
+    = Delete
+    | Void
+    | TypeOf
+    | UnaryPlus
+    | UnaryMinus
+    | BitwiseNot
+    | LogicalNot
+    | PrefixIncrement
+    | PrefixDecrement
+    | PostfixIncrement
+    | PostfixDecrement
 
---type UnaryOperator
---    = New
---    | Delete
---    | Void
---    | TypeOf
---    | PrefixIncrement
---    | PrefixDecrement
---    | PostfixIncrement
---    | PostfixDecrement
---    | UnaryPlus
---    | UnaryMinus
---    | BitwiseNot
---    | LogicalNot
---type BinaryOperator
---    = Times
---    | DividedBy
---    | Mod
---    | Plus
---    | Minus
---    | Incr
---    | LeftShift
---    | RightShift
---    | UnsignedRightShift
---    | LessThan
---    | GreaterThan
---    | LessThanOrEqual
---    | InstanceOf
---    | In
---    | GreaterThanOrEqual
---    | Equals
---    | DoesNotEqual
---    | StrictEquals
---    | StrictDoesNotEqual
---    | BitwiseAnd
---    | BitwiseOr
---    | BitwiseXOr
---    | And
---    | Or
+
+type BinaryOperator
+    = ArithmeticOperator ArithmeticOperator
+    | RelationalOperator RelationalOperator
+    | EqualityOperator EqualityOperator
+    | BitwiseShiftOperator BitwiseShiftOperator
+    | BinaryBitwiseOperator BinaryBitwiseOperator
+    | BinaryLogicalOperator BinaryLogicalOperator
+
+
+type AssignmentOperator
+    = Assignment
+    | ArithmeticAssignment ArithmeticOperator
+    | BitwiseShiftAssignment BitwiseShiftOperator
+    | BinaryBitwiseAssignment BinaryBitwiseOperator
+
+
+type ArithmeticOperator
+    = Addition
+    | Subtraction
+    | Division
+    | Multiplication
+    | Remainder
+    | Exponentiation
+
+
+type RelationalOperator
+    = In
+    | InstanceOf
+    | LessThan
+    | GreaterThan
+    | LessThanOrEqual
+    | GreaterThanOrEqual
+
+
+type EqualityOperator
+    = Equality
+    | Inequality
+    | StrictEquality
+    | StrictInequality
+
+
+type BitwiseShiftOperator
+    = LeftShift
+    | RightShift
+    | UnsignedRightShift
+
+
+type BinaryBitwiseOperator
+    = BitwiseAnd
+    | BitwiseXOr
+    | BitwiseOr
+
+
+type BinaryLogicalOperator
+    = LogicalAnd
+    | LogicalOr
+
+
+
+-- Comma operator?
