@@ -1,109 +1,52 @@
 module Language.JavaScript.Ast exposing (..)
 
-import Doc exposing ((|+), Doc)
 
-
-produce : Statement -> Doc
-produce statement =
-    case statement of
-        StatementList statements ->
-            statements |> List.map produce |> Doc.concat
-
-        BlockStatement statements ->
-            statements |> List.map produce |> Doc.concat |> Doc.braces
-
-        ExpressionStatement expression ->
-            produceExpression expression
-
-        IfStatement test consesquent alternate ->
-            produceIfTest test
-                |+ produceBlock consesquent
-                |+ produceIfAlternate alternate
-
-        --VariableDeclaration kind declarators ->
-        --    produceDeclarationKind kind
-        --        |+ Doc.space
-        --        |+ produceDeclarators declarators
-        --        |+ Doc.char ';'
-        FunctionDeclaration name params body ->
-            Doc.string "function"
-                |+ Doc.space
-                |+ produceIdentifier name
-                |+ produceArguments params
-                |+ produceBlock body
-
-
-produceIfTest : Expression -> Doc
-produceIfTest test =
-    Doc.string "if"
-        |+ Doc.parens (produceExpression test)
-
-
-produceBlock : Statement -> Doc
-produceBlock statement =
-    case statement of
-        BlockStatement statements ->
-            statements
-                |> List.map produce
-                |> Doc.concat
-                |> Doc.braces
-
-        otherStatement ->
-            Doc.braces (produce otherStatement)
-
-
-produceIfAlternate : Statement -> Doc
-produceIfAlternate alternate =
-    case alternate of
-        IfStatement _ _ _ ->
-            Doc.space
-                |+ produce alternate
-
-        otherStatement ->
-            produceBlock alternate
+type Program
+    = Module (List ModuleItem)
+    | Script StatementList
 
 
 
---produceDeclarationKind : DeclarationKind -> Doc
---produceDeclarationKind =
---    declarationKindToString >> Doc.string
---declarationKindToString : DeclarationKind -> String
---declarationKindToString kind =
---    case kind of
---        Var ->
---            "var"
---        Let ->
---            "let"
---        Const ->
---            "const"
---produceDeclarators : List Declarator -> Doc
---produceDeclarators declarators =
---    declarators
---        |> List.map produceDeclarator
---        |> Doc.join (Doc.char ',')
---produceDeclarator : Declarator -> Doc
---produceDeclarator (Declarator identifier expression) =
---    produceIdentifier identifier
---        |+ Doc.char '='
---        |+ produceExpression expression
+-- Module
 
 
-produceArguments : List Identifier -> Doc
-produceArguments arguments =
-    arguments
-        |> List.map produceIdentifier
-        |> Doc.join (Doc.char ',')
-        |> Doc.parens
+type ModuleItem
+    = ImportDeclaration ImportDeclaration
+    | ExportDeclaration ExportDeclaration
+    | ModuleStatementListItem StatementListItem
 
 
-produceExpression : Expression -> Doc
-produceExpression expression =
-    Debug.crash "TO DO"
+type ImportDeclaration
+    = Import ImportClause ModuleSpecifier
+    | ImportModuleSpecifier ModuleSpecifier
 
 
-produceIdentifier : Identifier -> Doc
-produceIdentifier =
-    Doc.string
+type ImportClause
+    = NameSpaceImport (Maybe Identifier) Identifier
+    | NamedImport (Maybe Identifier) (List ImportSpecifier)
+
+
+type ImportSpecifier
+    = ImportSpecifier Identifier
+    | AsImportSpecifier Identifier Identifier
+
+
+type ModuleSpecifier
+    = ModuleSpecifier StringLiteral
+
+
+type ExportDeclaration
+    = ExportAllFrom ModuleSpecifier
+    | ExportFrom (List ExportSpecifier) ModuleSpecifier
+    | DeclarationExport Declaration
+    | DefaultDeclarationExport Declaration
+    | ExpressionExport Expression
+    | DefaultExpressionExport Expression
+
+
+type ExportSpecifier
+    = ExportSpecifier Identifier
+    | AsExportSpecifier Identifier Identifier
 
 
 
@@ -124,10 +67,6 @@ type Statement
     | TryStatement TryStatement
     | Label Identifier Statement
     | Debugger
-      -- TODO
-    | ImportStatement
-    | ImportMeta
-    | ExportStatement
 
 
 type Block
@@ -144,25 +83,33 @@ type StatementListItem
 
 
 type Declaration
-    = Const Binding
-    | Let Binding
-    | Var Binding
-    | FunctionDeclaration Identifier Parameters (List Statement)
-    | GeneratorDeclaration Identifier Parameters (List Statement)
-    | AsyncFunctionDeclaration Identifier Parameters (List Statement)
-    | AsyncGeneratorDeclaration Identifier Parameters (List Statement)
-    | ClassDeclaration Identifier (Maybe LeftHandSideExpression) (List MethodDefinition)
+    = Const (List Binding)
+    | Let (List Binding)
+    | Var (List Binding)
+    | FunctionDeclaration Identifier Parameters Block
+    | GeneratorDeclaration Identifier Parameters Block
+    | AsyncFunctionDeclaration Identifier Parameters Block
+    | AsyncGeneratorDeclaration Identifier Parameters Block
+    | ClassDeclaration Identifier Heritage (List ClassElement)
 
 
 type Binding
-    = BindingIdentifier Identifier (Maybe AssignmentExpression)
-    | BindingPattern BindingPattern AssignmentExpression
+    = IdentifierBinding Identifier (Maybe Expression)
+    | PatternBinding Pattern Expression
 
 
-type BindingPattern
-    = -- TODO
-      ObjectBindingPattern
-    | ArrayBindingPattern
+type alias Identifier =
+    String
+
+
+type Pattern
+    = ObjectPattern (List BindingProperty) (Maybe Identifier)
+    | ArrayPattern (List BindingElement) (Maybe Identifier)
+
+
+type BindingProperty
+    = SingleNameBindingProperty Identifier (Maybe Expression)
+    | ExpandedBindingProperty PropertyName BindingElement
 
 
 type Parameters
@@ -170,26 +117,32 @@ type Parameters
 
 
 type BindingElement
-    = SingleNameBindingElement Identifier (Maybe AssignmentExpression)
-    | BindingPatternElement BindingPattern (Maybe AssignmentExpression)
+    = SingleNameBindingElement Identifier (Maybe Expression)
+    | PatternElement Pattern (Maybe Expression)
 
 
 type BindingRestElement
     = BindingRestElementIdentifier Identifier
-    | BindingRestElementPattern BindingPattern
+    | BindingRestElementPattern Pattern
 
 
 type IterationStatement
     = DoWhile Statement Expression
     | While Expression Statement
-    | For (List Declaration) (Maybe Expression) (Maybe Expression) Statement
+    | For ForDeclaration (Maybe Expression) (Maybe Expression) Statement
     | ForIn ForBinding Expression Statement
     | ForOf ForBinding Expression Statement
 
 
+type ForDeclaration
+    = ForConst (List Binding)
+    | ForLet (List Binding)
+    | ForVar (List Binding)
+
+
 type ForBinding
-    = ForBindingIdentifier Identifier
-    | ForBindingPattern BindingPattern
+    = ForIdentifier Identifier
+    | ForPattern Pattern
 
 
 type CaseClause
@@ -208,268 +161,187 @@ type TryStatement
 
 type TryParameter
     = TryParameterIdentifier Identifier
-    | TryParameterPattern BindingPattern
-
-
-
---Expression
-
-
-type Expression
-    = AssignmentExpression AssignmentExpression
-    | CommaExpressions (List AssignmentExpression)
-
-
-type AssignmentExpression
-    = ArithmeticOperator
-    | ArrayComprehensions
-    | AssignmentOperators
-    | BitwiseOperators
-    | CommaOperator
-    | ComparisonOperators
-    | ConditionalOperator
-    | DesetructuringAssignemnts
-    | ExpressionClosures
-    | GeneratorComprehensions
-    | GroupingOperator
-    | LegacyGeneratorFunctionExpression
-    | LogicalOperators
-    | ObjectInitializer
-    | OperatorPrecedence
-    | PipelineOperator
-    | PropertyAccessors
-    | SpreadSyntax
-    | AsyncFunctionExpression
-    | Await
-    | ClassExpression
-    | DeleteOperator
-    | FunctionExpression
-    | GeneratorExpression
-    | InOperator
-    | InstanceOf
-    | NewOperator
-    | NewTarget
-    | Super
-    | This
-    | TypeOf
-    | VoidOperator
-    | Yield
-    | YieldGenerator
-
-
-type Identifier
-    = Identifier String
-
-
-type LeftHandSideExpression
-    = LeftHandSideExpression
+    | TryParameterPattern Pattern
 
 
 type MethodDefinition
-    = MethodDefinition
+    = NormalMethod PropertyName Parameters Block
+    | GeneratorMethod PropertyName Parameters Block
+    | AsyncMethod PropertyName Parameters Block
+    | AsyncGeneratorMethod PropertyName Parameters Block
+    | Get PropertyName Block
+    | Set PropertyName Parameters Block
+
+
+type ClassElement
+    = ClassMethod MethodDefinition
+    | StaticClassMethod MethodDefinition
 
 
 
--- Expressions
---type Expression
---    = IdentifierReference IdentifierReference
---      --| BindingIdentifier BindingIdentifier
---    | Identifier IdentifierName
---      --| AsyncArrowBindingIdentifier AsyncArrowBindingIdentifier
---      --| LabelIdentifier LabelIdentifier
---    | PrimaryExpression PrimaryExpression
---    | CoveredParenthesizedExpressionAndArrowParameterList CoveredParenthesizedExpressionAndArrowParameterList
---type IdentifierReference
---    = IdentifierReferenceIdentifier IdentifierName
---    | IdentifierReferenceYield
---    | IdentifierReferenceAwait
---type BindingIdentifier
---    = BindingIdentifierIdentifier IdentifierName
---    | BindingIdentifierYield
---    | BindingIdentifierAwait
---type PrimaryExpression
---    = This
---    | PrimaryExpressionIdentifierReference IdentifierReference
---    | Literal Literal
---    | ArrayLiteral (List AssignmentExpression) (Maybe AssignmentExpression)
---    | ObjectLiteral (List PropertyDefinition)
---    | FunctionExpression FunctionExpression
---    | ClassExpression ClassExpression
---      --| GeneratorExpression GeneratorExpression
---      --| AsyncFunctionExpression AsyncFunctionExpression
---      --| AsyncGeneratorExpression AsyncGeneratorExpression
---      --| RegularExpressionLiteral RegularExpressionLiteral
---      --| TemplateLiteral TemplateLiteral
---    | PrimaryExpressionCoveredParenthesizedExpressionAndArrowParameterList CoveredParenthesizedExpressionAndArrowParameterList
---type CoveredParenthesizedExpressionAndArrowParameterList
---    = ExpressionInParenthesis Expression
---    | ExpressionInParenthesisTrailingComma Expression
---    | EmptyParenthesis
---    | ElipsisBindingIdentifier BindingIdentifier
---    | ElipsisBindingPattern BindingPattern
---    | ExpressionElipsisBindingIdentifier Expression BindingIdentifier
---    | ExpressionElipsisBindingPattern Expression BindingPattern
---type Literal
---    = NullLiteral
---    | BooleanLiteral Bool
---    | NumericLiteral Float
---    | StringLiteral String
---type PropertyDefinition
---    = IdentifierReferencePropertyDefinition IdentifierReference
---      --| CoverInitializedName CoverInitializedName
---    | KeyValue PropertyName AssignmentExpression
---    | MethodDefinition MethodDefinition
---    | SpreadProperties AssignmentExpression
---type PropertyName
---    = LiteralPropertyName LiteralPropertyName
---    | ComputedPropertyName AssignmentExpression
---type LiteralPropertyName
---    = IdentifierNameProperty Identifier
---    | StringLIteralProperty String
---    | NumericLiteralProperty Float
---type MemberExpression
---    = PrimaryMemberExpression PrimaryExpression
----- Statements
-----type Statement
-----    = BlockStatement (List StatementListItem)
-----    | VariableStatement (List Binding)
-----    | EmptyStatement
-----    | ExpressionStatement Expression
-----    | IfStatement IfStatement
-----    | BreakableStatement BreakableStatement
-----      --| ContinueStatement
-----    | BreakStatement
-----    | ReturnStatement (Maybe Expression)
-------| WithStatement
-------| LabelledStatement
-------| ThrowStatement
-------| TryStatement
-------| DebuggerStatement
-----type Declaration
-----    = HoistableDeclaration HoistableDeclaration
-----    | ClassDeclaration
-----    | LexicalDeclaration LexicalDeclaration
-----type HoistableDeclaration
-----    = FunctionDeclaration
-------| GeneratorDeclaration
-------| AsyncFunctionDeclaration
-------| AsyncGeneratorDeclaration
-----type BreakableStatement
-----    = IterationStatement IterationStatement
-----    | SwitchStatement Expression CaseBlock
-----type StatementListItem
-----    = StatementLIstStatement Statement
-----    | StatementListDeclaration Declaration
-----type LexicalDeclaration
-----    = Let (List Binding)
-----    | Const (List Binding)
-----type Binding
-----    = BindingIdentifier BindingIdentifier (Maybe AssignmentExpression)
-----    | BindingPattern BindingPattern AssignmentExpression
-----type BindingPattern
-----    = ObjectBindingPattern
-----    | ArrayBindingPattern
-----type IfStatement
-----    = IfElse Expression Statement Statement
-----    | If Expression Statement
-----type CaseBlock
-----    = CaseNoDefault (List CaseClause)
-----    | CaseDefault (List CaseClause) DefaultClause (List CaseClause)
-----type CaseClause
-----    = CaseClause Expression (List Statement)
-----type DefaultClause
-----    = Default (List Statement)
----- Complete when necessary
-----type IterationStatement
-----    = DoWhile Statement Expression
-----    | While Expression Statement
-----    | For
-----    | ForIn
-----    | ForOf
--------------------------
-------type Statement
-------    = StatementList (List Statement)
-------    | BlockStatement (List Statement)
-------    | ExpressionStatement Expression
-------    | IfStatement Expression Statement Statement
-------    | VariableDeclaration DeclarationKind (List Declarator)
-------    | FunctionDeclaration Identifier (List Identifier) Statement
-----type Declarator
-----    = Declarator Identifier Expression
-----type alias Identifier =
-----    String
-----type Expression
-----    = This
-----    | GroupingOperator Expression
-----    | Identifier Identifier
-----    | Literal Literal
-----    | ArrayExpression (List Expression)
-----    | ObjectExpression (List Property)
-----    | MemberExpression Expression Expression
-----    | CallExpression Expression (List Expression)
-----    | NewExpression Identifier (List Expression)
-----    | AssignmentExpression AssignmentOperator Expression Expression
-----    | FunctionExpression (List Identifier) Statement
-----    | ArrowFunction (List Identifier) Statement
-----    | ConciseArrowFunction (List Identifier) Expression
-----    | UnaryExpression UnaryOperator Expression
-----    | BinaryExpression BinaryOperator Expression Expression
-----    | TernaryExpression Expression Expression Expression
-----    | CommaOperator (List Expression)
---type Property
---    = Property Expression Expression
---type UnaryOperator
---    = Delete
---    | Void
---    | TypeOf
---    | UnaryPlus
---    | UnaryMinus
---    | BitwiseNot
---    | LogicalNot
---    | PrefixIncrement
---    | PrefixDecrement
---    | PostfixIncrement
---    | PostfixDecrement
---type BinaryOperator
---    = ArithmeticOperator ArithmeticOperator
---    | RelationalOperator RelationalOperator
---    | EqualityOperator EqualityOperator
---    | BitwiseShiftOperator BitwiseShiftOperator
---    | BinaryBitwiseOperator BinaryBitwiseOperator
---    | BinaryLogicalOperator BinaryLogicalOperator
---type AssignmentOperator
---    = Assignment
---    | ArithmeticAssignment ArithmeticOperator
---    | BitwiseShiftAssignment BitwiseShiftOperator
---    | BinaryBitwiseAssignment BinaryBitwiseOperator
---type ArithmeticOperator
---    = Addition
---    | Subtraction
---    | Division
---    | Multiplication
---    | Remainder
---    | Exponentiation
---type RelationalOperator
---    = In
---    | InstanceOf
---    | LessThan
---    | GreaterThan
---    | LessThanOrEqual
---    | GreaterThanOrEqual
---type EqualityOperator
---    = Equality
---    | Inequality
---    | StrictEquality
---    | StrictInequality
---type BitwiseShiftOperator
---    = LeftShift
---    | RightShift
---    | UnsignedRightShift
---type BinaryBitwiseOperator
---    = BitwiseAnd
---    | BitwiseXOr
---    | BitwiseOr
---type BinaryLogicalOperator
---    = LogicalAnd
---    | LogicalOr
----- Comma operator?
+-- Expression
+
+
+type Expression
+    = This
+    | IdentifierExpression Identifier
+    | LiteralExpression Literal
+    | ObjectLiteral (List PropertyDefinition)
+    | ArrayLiteral (List Expression) (Maybe Expression)
+    | TemplateLiteral (List TemplateItem)
+    | UnaryExpression UnaryOperator Expression
+    | UpdateExpression UpdateOperator LeftHandSideExpression
+    | BinaryExpression Expression BinaryOperator Expression
+    | ConditionalExpression Expression Expression Expression
+    | GroupingExpression Expression
+    | AssignmentExpression LeftHandSideExpression AssignmentOperator Expression
+    | FunctionExpression FunctionExpression
+    | MemberExpression MemberExpression
+    | CallExpression Callee Arguments
+    | NewExpression Identifier Arguments
+    | Await Expression
+    | Yield Expression
+    | YieldGenerator Expression
+
+
+type UnaryOperator
+    = Delete
+    | Void
+    | TypeOf
+    | UnaryPlus
+    | UnaryNegation
+    | BitwiseNot
+    | LogicalNot
+
+
+type UpdateOperator
+    = PostfixIncrement
+    | PostfixDecrement
+    | PrefixIncrement
+    | PrefixDecrement
+
+
+type BinaryOperator
+    = -- Arithmetic Operators
+      Addition
+    | Subtraction
+    | Multiplication
+    | Division
+      -- Bitwise Operators
+    | BitwiseAND
+    | BitwiseXOR
+    | BitwiseOR
+    | BitwiseNOT
+    | LeftShift
+    | RightShift
+    | UnsignedRightShift
+      -- Comparison Operators
+    | Equality
+    | Inequality
+    | StrictEquality
+    | StrictInequality
+    | GreaterThan
+    | GreaterThanOrEqual
+    | LessThan
+    | LessThanOrEqual
+    | InstanceOf
+    | In
+
+
+type AssignmentOperator
+    = Assignment
+    | AdditionAssignment
+    | SubtractionAssignment
+    | MultiplicationAssignment
+    | DivisionAssignment
+    | RemainderAssignment
+    | ExponentiationAssignment
+    | LeftShiftAssignment
+    | RightShiftAssignment
+    | UnsignedRightShiftAssignment
+    | BitwiseANDAssignment
+    | BitwiseXORAssignment
+    | BitwiseORAssignment
+
+
+type LeftHandSideExpression
+    = LeftHandSideIdentifier Identifier
+    | LeftHandSideMemberExpression MemberExpression
+    | LeftHandSidePattern Pattern
+    | LeftHandSideSuperProperty Property
+    | LeftHandSideNewTarget
+
+
+type Literal
+    = NullLiteral
+    | BooleanLiteral Bool
+    | Numeric Float
+    | StringLiteralExpression StringLiteral
+
+
+type StringLiteral
+    = StringLiteral String
+
+
+type PropertyDefinition
+    = KeyValueProperty PropertyName Expression
+    | MethodProperty MethodDefinition
+    | SpreadProperty Expression
+    | ShortHandProperty Identifier
+
+
+type PropertyName
+    = IdentifierProperty Identifier
+    | StringProperty StringLiteral
+    | NumericProperty Float
+    | ComputedPropertyName Expression
+
+
+type TemplateItem
+    = TemplateString String
+    | TemplateSubstitution Expression
+
+
+type MemberExpression
+    = Member Expression Property
+
+
+type Property
+    = ComputedProperty Expression
+    | DotProperty Identifier
+
+
+type FunctionExpression
+    = NormalFunctionExpression (Maybe Identifier) Parameters Block
+    | ArrowFunctionExpression ArrowFunctionParameters ArrowFunctionBody
+    | AsyncFunctionExpression (Maybe Identifier) Parameters Block
+    | GeneratorExpression (Maybe Identifier) Parameters Block
+    | AsyncGeneratorExpression (Maybe Identifier) Parameters Block
+    | ClassExpression (Maybe Identifier) Heritage (List MethodDefinition)
+
+
+type ArrowFunctionParameters
+    = UnparenthesizedArrowFunctionParam Identifier
+    | NormalArrowFunctionParams Parameters
+
+
+type ArrowFunctionBody
+    = ConciseArrowFunctionBody Expression
+    | NormalArrowFunctionBody Block
+
+
+type Heritage
+    = NoHeritage
+    | NullHeritage
+    | Heritage Identifier
+
+
+type Callee
+    = IdentifierCallee Identifier
+    | MemberExpressionCallee MemberExpression
+    | FunctionExpressionCallee FunctionExpression
+    | SuperCallee
+
+
+type Arguments
+    = Arguments (List Expression) (Maybe Identifier)
