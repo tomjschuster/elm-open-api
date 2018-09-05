@@ -136,15 +136,15 @@ type BindingRestElement
 type IterationStatement
     = DoWhile Statement Expression
     | While Expression Statement
-    | For ForDeclaration (Maybe Expression) (Maybe Expression) Statement
-    | ForIn ForBinding Expression Statement
-    | ForOf ForBinding Expression Statement
+    | For Declarator (List Binding) (Maybe Expression) (Maybe Expression) Statement
+    | ForIn Declarator Binding Expression Statement
+    | ForOf Declarator Binding Expression Statement
 
 
-type ForDeclaration
-    = ForConst (List Binding)
-    | ForLet (List Binding)
-    | ForVar (List Binding)
+type Declarator
+    = ConstDeclarator
+    | LetDeclarator
+    | VarDeclarator
 
 
 type ForBinding
@@ -152,12 +152,12 @@ type ForBinding
     | ForPattern Pattern
 
 
-type CaseClause
-    = CaseClause Expression (List StatementListItem)
+type alias CaseClause =
+    ( Expression, List StatementListItem )
 
 
-type DefaultClause
-    = DefaultClause (List StatementListItem)
+type alias DefaultClause =
+    List StatementListItem
 
 
 type TryStatement
@@ -167,8 +167,8 @@ type TryStatement
 
 
 type TryParameter
-    = TryParameterIdentifier Identifier
-    | TryParameterPattern Pattern
+    = TryIdentifier Identifier
+    | TryPattern Pattern
 
 
 type MethodDefinition

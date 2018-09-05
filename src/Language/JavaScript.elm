@@ -60,6 +60,21 @@ module_ moduleItems =
     Module moduleItems
 
 
+moduleStatementListItems : List StatementListItem -> List ModuleItem
+moduleStatementListItems items =
+    List.map ModuleStatementListItem items
+
+
+moduleStatement : Statement -> ModuleItem
+moduleStatement statement =
+    ModuleStatementListItem <| StatementItem <| statement
+
+
+moduleDeclaration : Declaration -> ModuleItem
+moduleDeclaration declaration =
+    ModuleStatementListItem <| DeclarationItem <| declaration
+
+
 importModule : ModulePath -> ModuleItem
 importModule modulePath =
     ImportItem <| ImportModulePath modulePath
@@ -188,22 +203,22 @@ exportSpecifier ( identifier, alias ) =
 
 
 
-{- Statements -}
+{- Statements and Declarations -}
 
 
-const : List ( Identifier, Maybe Expression ) -> StatementListItem
+const : List ( Identifier, Maybe Expression ) -> Declaration
 const bindings =
-    DeclarationItem <| LexicalDeclaration <| constDeclaration bindings
+    LexicalDeclaration <| constDeclaration bindings
 
 
-let_ : List ( Identifier, Maybe Expression ) -> StatementListItem
+let_ : List ( Identifier, Maybe Expression ) -> Declaration
 let_ bindings =
-    DeclarationItem <| LexicalDeclaration <| letDeclaration bindings
+    LexicalDeclaration <| letDeclaration bindings
 
 
-var : List ( Identifier, Maybe Expression ) -> StatementListItem
+var : List ( Identifier, Maybe Expression ) -> Statement
 var bindings =
-    StatementItem <| VariableStatement (List.map binding bindings)
+    VariableStatement (List.map binding bindings)
 
 
 function :
@@ -211,27 +226,186 @@ function :
     -> List ( Identifier, Maybe Expression )
     -> Maybe Identifier
     -> List StatementListItem
-    -> StatementListItem
+    -> Declaration
 function identifier fnParameters rest statements =
-    DeclarationItem <|
-        HoistableDeclaration <|
-            functionDeclaration identifier fnParameters rest statements
+    HoistableDeclaration <|
+        functionDeclaration identifier fnParameters rest statements
 
 
 class :
     Identifier
     -> Maybe Identifier
     -> List ( Bool, MethodDefinition )
-    -> StatementListItem
+    -> Declaration
 class identifier extends classElements =
-    DeclarationItem <|
-        ClassDeclaration identifier
-            (heritage extends)
-            (List.map classElement classElements)
+    ClassDeclaration identifier
+        (heritage extends)
+        (List.map classElement classElements)
+
+
+block : List StatementListItem -> Statement
+block items =
+    BlockStatement <| Block items
+
+
+return : Maybe Expression -> Statement
+return expression =
+    Return expression
+
+
+throw : Expression -> Statement
+throw expression =
+    Throw expression
+
+
+break : Statement
+break =
+    Break Nothing
+
+
+continue : Statement
+continue =
+    Continue Nothing
+
+
+if_ : Expression -> Statement -> Statement
+if_ test consequent =
+    IfStatement test consequent Nothing
+
+
+ifElse : Expression -> Statement -> Statement -> Statement
+ifElse test consequent alternate =
+    IfStatement test consequent (Just alternate)
+
+
+switch :
+    Expression
+    -> List ( Expression, List StatementListItem )
+    -> List StatementListItem
+    -> Statement
+switch test caseClauses defaultClause =
+    Switch test caseClauses (Just defaultClause)
+
+
+switchNoDefault :
+    Expression
+    -> List ( Expression, List StatementListItem )
+    -> Statement
+switchNoDefault test caseClauses =
+    Switch test caseClauses Nothing
+
+
+tryCatch :
+    List StatementListItem
+    -> Identifier
+    -> List StatementListItem
+    -> Statement
+tryCatch tryBlock catchParameter catchBlock =
+    TryStatement <|
+        TryCatch
+            (block_ tryBlock)
+            (TryIdentifier catchParameter)
+            (block_ catchBlock)
+
+
+forLet :
+    List ( Identifier, Maybe Expression )
+    -> Expression
+    -> Expression
+    -> Statement
+    -> Statement
+forLet init test update statement =
+    IterationStatement <|
+        For LetDeclarator
+            (List.map binding init)
+            (Just test)
+            (Just update)
+            statement
+
+
+forVar :
+    List ( Identifier, Maybe Expression )
+    -> Expression
+    -> Expression
+    -> Statement
+    -> Statement
+forVar init test update statement =
+    IterationStatement <|
+        For
+            VarDeclarator
+            (List.map binding init)
+            (Just test)
+            (Just update)
+            statement
+
+
+forOfLet :
+    ( Identifier, Maybe Expression )
+    -> Expression
+    -> Statement
+    -> Statement
+forOfLet initBinding iterable statement =
+    IterationStatement <|
+        ForOf LetDeclarator
+            (binding initBinding)
+            iterable
+            statement
+
+
+forOfVar :
+    ( Identifier, Maybe Expression )
+    -> Expression
+    -> Statement
+    -> Statement
+forOfVar initBinding iterable statement =
+    IterationStatement <|
+        ForOf VarDeclarator
+            (binding initBinding)
+            iterable
+            statement
+
+
+forInLet :
+    ( Identifier, Maybe Expression )
+    -> Expression
+    -> Statement
+    -> Statement
+forInLet initBinding iterable statement =
+    IterationStatement <|
+        ForIn LetDeclarator
+            (binding initBinding)
+            iterable
+            statement
+
+
+forInVar :
+    ( Identifier, Maybe Expression )
+    -> Expression
+    -> Statement
+    -> Statement
+forInVar initBinding iterable statement =
+    IterationStatement <|
+        ForIn VarDeclarator
+            (binding initBinding)
+            iterable
+            statement
+
+
+while : Expression -> Statement -> Statement
+while test statement =
+    IterationStatement <| While test statement
 
 
 
--- Declaration Helper
+-- Statement Helpers
+
+
+block_ : List StatementListItem -> Block
+block_ items =
+    Block items
+
+
+
 {- Declarations -}
 
 
@@ -368,7 +542,7 @@ functionOBS : List String -> List Doc -> Doc
 functionOBS argList statements =
     Doc.string "function"
         |+ declareArgs argList
-        |+ block statements
+        |+ blockOBS statements
 
 
 namedFunction : String -> List String -> List Doc -> Doc
@@ -377,14 +551,14 @@ namedFunction name argList statements =
         |+ Doc.space
         |+ Doc.string name
         |+ declareArgs argList
-        |+ block statements
+        |+ blockOBS statements
 
 
 arrowFunction : List String -> List Doc -> Doc
 arrowFunction argList statements =
     declareArgs argList
         |+ fatArrow
-        |+ block statements
+        |+ blockOBS statements
 
 
 conciseArrowFunction : List String -> Doc -> Doc
@@ -394,8 +568,8 @@ conciseArrowFunction argList statement =
         |+ statement
 
 
-return : Doc -> Doc
-return expression =
+returnOBS : Doc -> Doc
+returnOBS expression =
     Doc.string "return"
         |+ Doc.space
         |+ expression
@@ -427,8 +601,8 @@ declareArgs argList =
 -- Control Flow
 
 
-block : List Doc -> Doc
-block statements =
+blockOBS : List Doc -> Doc
+blockOBS statements =
     Doc.braces (Doc.join semicolon statements)
 
 

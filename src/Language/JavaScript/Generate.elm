@@ -310,10 +310,10 @@ generateTryStatement tryStatement =
 generateHandlerParameter : TryParameter -> Doc
 generateHandlerParameter tryParameter =
     case tryParameter of
-        TryParameterIdentifier identifier ->
+        TryIdentifier identifier ->
             generateIdentifier identifier
 
-        TryParameterPattern pattern ->
+        TryPattern pattern ->
             generatePattern pattern
 
 
@@ -584,19 +584,19 @@ generateIterationStatement iterationStatement =
                 |+ Doc.parens (generateExpression expression)
                 |+ generateStatement statement
 
-        For init test update statement ->
+        For declarator init test update statement ->
             for
-                |+ Doc.parens (generateFor init test update)
+                |+ Doc.parens (generateFor declarator init test update)
                 |+ generateStatement statement
 
-        ForIn binding expression statement ->
+        ForIn declarator binding expression statement ->
             for
-                |+ Doc.parens (generateForIn binding expression)
+                |+ Doc.parens (generateForIn declarator binding expression)
                 |+ generateStatement statement
 
-        ForOf binding expression statement ->
+        ForOf declarator binding expression statement ->
             for
-                |+ Doc.parens (generateForOf binding expression)
+                |+ Doc.parens (generateForOf declarator binding expression)
                 |+ generateStatement statement
 
 
@@ -611,37 +611,27 @@ generateDoWhileBody statement =
                 |+ Doc.line
 
 
-generateFor : ForDeclaration -> Maybe Expression -> Maybe Expression -> Doc
-generateFor init test update =
-    generateForDeclaration init
+generateFor : Declarator -> List Binding -> Maybe Expression -> Maybe Expression -> Doc
+generateFor declarator init test update =
+    generateForDeclarations declarator init
         |+ semicolon
         |+ maybeProduce generateExpression test
         |+ semicolon
         |+ maybeProduce generateExpression update
 
 
-generateForDeclaration : ForDeclaration -> Doc
-generateForDeclaration declaration =
-    case declaration of
-        ForConst bindings ->
-            const
-                |+ Doc.space
-                |+ (List.map generateBinding bindings |> Doc.join comma)
-
-        ForLet bindings ->
-            let_
-                |+ Doc.space
-                |+ (List.map generateBinding bindings |> Doc.join comma)
-
-        ForVar bindings ->
-            var
-                |+ Doc.space
-                |+ (List.map generateBinding bindings |> Doc.join comma)
+generateForDeclarations : Declarator -> List Binding -> Doc
+generateForDeclarations declarator bindings =
+    generateDeclarator declarator
+        |+ Doc.space
+        |+ (List.map generateBinding bindings |> Doc.join comma)
 
 
-generateForIn : ForBinding -> Expression -> Doc
-generateForIn binding expression =
-    generateForBinding binding
+generateForIn : Declarator -> Binding -> Expression -> Doc
+generateForIn declarator binding expression =
+    generateDeclarator declarator
+        |+ Doc.space
+        |+ generateBinding binding
         |+ Doc.space
         |+ in_
         |+ Doc.space
@@ -649,24 +639,16 @@ generateForIn binding expression =
         |> Doc.parens
 
 
-generateForOf : ForBinding -> Expression -> Doc
-generateForOf binding expression =
-    generateForBinding binding
+generateForOf : Declarator -> Binding -> Expression -> Doc
+generateForOf declarator binding expression =
+    generateDeclarator declarator
+        |+ Doc.space
+        |+ generateBinding binding
         |+ Doc.space
         |+ of_
         |+ Doc.space
         |+ generateExpression expression
         |> Doc.parens
-
-
-generateForBinding : ForBinding -> Doc
-generateForBinding binding =
-    case binding of
-        ForIdentifier identifier ->
-            generateIdentifier identifier
-
-        ForPattern pattern ->
-            generatePattern pattern
 
 
 generateSwitch : Expression -> List CaseClause -> Maybe DefaultClause -> Doc
@@ -684,7 +666,7 @@ generateCaseClauses clauses defaultClause =
 
 
 generateCaseClause : CaseClause -> Doc
-generateCaseClause (CaseClause expression statementList) =
+generateCaseClause ( expression, statementList ) =
     case_
         |+ Doc.space
         |+ generateExpression expression
@@ -693,7 +675,7 @@ generateCaseClause (CaseClause expression statementList) =
 
 
 generateDefaultClause : DefaultClause -> Doc
-generateDefaultClause (DefaultClause statementList) =
+generateDefaultClause statementList =
     default
         |+ colon
         |+ generateStatementList statementList
@@ -702,6 +684,19 @@ generateDefaultClause (DefaultClause statementList) =
 generateExpression : Expression -> Doc
 generateExpression expression =
     Debug.crash "TODO"
+
+
+generateDeclarator : Declarator -> Doc
+generateDeclarator declarator =
+    case declarator of
+        ConstDeclarator ->
+            const
+
+        LetDeclarator ->
+            let_
+
+        VarDeclarator ->
+            var
 
 
 generateIdentifier : Identifier -> Doc
