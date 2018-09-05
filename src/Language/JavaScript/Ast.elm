@@ -1,9 +1,11 @@
 module Language.JavaScript.Ast exposing (..)
 
+-- Program
+
 
 type Program
     = Module (List ModuleItem)
-    | Script StatementList
+    | Script (List StatementListItem)
 
 
 
@@ -11,14 +13,14 @@ type Program
 
 
 type ModuleItem
-    = ImportDeclaration ImportDeclaration
-    | ExportDeclaration ExportDeclaration
+    = ImportItem Import
+    | ExportItem Export
     | ModuleStatementListItem StatementListItem
 
 
-type ImportDeclaration
-    = Import ImportClause ModuleSpecifier
-    | ImportModuleSpecifier ModuleSpecifier
+type Import
+    = Import ImportClause ModulePath
+    | ImportModulePath ModulePath
 
 
 type ImportClause
@@ -31,17 +33,18 @@ type ImportSpecifier
     | AsImportSpecifier Identifier Identifier
 
 
-type ModuleSpecifier
-    = ModuleSpecifier StringLiteral
+type alias ModulePath =
+    String
 
 
-type ExportDeclaration
-    = ExportAllFrom ModuleSpecifier
-    | ExportFrom (List ExportSpecifier) ModuleSpecifier
+type Export
+    = ExportAllFrom ModulePath
+    | ExportFrom (List ExportSpecifier) ModulePath
+    | VariableStatementExport (List Binding)
     | DeclarationExport Declaration
-    | DefaultDeclarationExport Declaration
-    | ExpressionExport Expression
+    | DefaultHoistableDeclarationExport HoistableDeclaration
     | DefaultExpressionExport Expression
+    | DefaultClassDeclarationExport Identifier Heritage (List ClassElement)
 
 
 type ExportSpecifier
@@ -56,6 +59,7 @@ type ExportSpecifier
 type Statement
     = BlockStatement Block
     | Empty
+    | VariableStatement (List Binding)
     | ExpressionStatement Expression
     | IterationStatement IterationStatement
     | IfStatement Expression Statement (Maybe Statement)
@@ -70,11 +74,7 @@ type Statement
 
 
 type Block
-    = Block StatementList
-
-
-type StatementList
-    = StatementList (List StatementListItem)
+    = Block (List StatementListItem)
 
 
 type StatementListItem
@@ -83,14 +83,21 @@ type StatementListItem
 
 
 type Declaration
+    = LexicalDeclaration LexicalDeclaration
+    | HoistableDeclaration HoistableDeclaration
+    | ClassDeclaration Identifier Heritage (List ClassElement)
+
+
+type LexicalDeclaration
     = Const (List Binding)
     | Let (List Binding)
-    | Var (List Binding)
-    | FunctionDeclaration Identifier Parameters Block
+
+
+type HoistableDeclaration
+    = FunctionDeclaration Identifier Parameters Block
     | GeneratorDeclaration Identifier Parameters Block
     | AsyncFunctionDeclaration Identifier Parameters Block
     | AsyncGeneratorDeclaration Identifier Parameters Block
-    | ClassDeclaration Identifier Heritage (List ClassElement)
 
 
 type Binding
@@ -146,11 +153,11 @@ type ForBinding
 
 
 type CaseClause
-    = CaseClause Expression StatementList
+    = CaseClause Expression (List StatementListItem)
 
 
 type DefaultClause
-    = DefaultClause StatementList
+    = DefaultClause (List StatementListItem)
 
 
 type TryStatement

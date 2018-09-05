@@ -7,9 +7,9 @@ import Language.JavaScript.Ast as Ast exposing (..)
 --   generateExpression
 
 
-generate : Ast -> Doc
-generate ast =
-    case ast of
+generate : Ast.Program -> Doc
+generate program =
+    case program of
         Module moduleItems ->
             moduleItems
                 |> List.map generateModuleItem
@@ -22,18 +22,18 @@ generate ast =
 generateModuleItem : ModuleItem -> Doc
 generateModuleItem moduleItem =
     case moduleItem of
-        ImportDeclaration declaration ->
-            generateImportDeclaration declaration
+        ImportItem declaration ->
+            generateImport declaration
 
-        ExportDeclaration declaration ->
-            generateExportDeclaration declaration
+        ExportItem declaration ->
+            generateExport declaration
 
         ModuleStatementListItem statementListItem ->
             generateStatementListItem statementListItem
 
 
-generateImportDeclaration : ImportDeclaration -> Doc
-generateImportDeclaration declaration =
+generateImport : Import -> Doc
+generateImport declaration =
     case declaration of
         Import clause specifier ->
             import_
@@ -42,56 +42,55 @@ generateImportDeclaration declaration =
                 |+ Doc.space
                 |+ from
                 |+ Doc.space
-                |+ generateModuleSpecifier specifier
+                |+ generateModulePath specifier
 
-        ImportModuleSpecifier specifier ->
+        ImportModulePath specifier ->
             import_
                 |+ Doc.space
-                |+ generateModuleSpecifier specifier
+                |+ generateModulePath specifier
 
 
-generateModuleSpecifier : ModuleSpecifier -> Doc
-generateModuleSpecifier (ModuleSpecifier moduleSpecifier) =
-    generateStringLiteral moduleSpecifier
+generateModulePath : ModulePath -> Doc
+generateModulePath =
+    Doc.string
 
 
-generateExportDeclaration : ExportDeclaration -> Doc
-generateExportDeclaration declaration =
+generateExport : Export -> Doc
+generateExport declaration =
     case declaration of
-        ExportAllFrom moduleSpecifier ->
+        ExportAllFrom modulePath ->
             export
                 |+ Doc.space
                 |+ asterisk
                 |+ Doc.space
                 |+ from
                 |+ Doc.space
-                |+ generateModuleSpecifier moduleSpecifier
+                |+ generateModulePath modulePath
 
-        ExportFrom exportSpecifiers moduleSpecifier ->
+        ExportFrom exportSpecifiers modulePath ->
             export
                 |+ Doc.space
                 |+ Doc.braces (exportSpecifiers |> List.map generateExportSpecifier |> Doc.join comma)
                 |+ from
                 |+ Doc.space
-                |+ generateModuleSpecifier moduleSpecifier
+                |+ generateModulePath modulePath
+
+        VariableStatementExport bindings ->
+            var
+                |+ Doc.space
+                |+ (List.map generateBinding bindings |> Doc.join comma)
 
         DeclarationExport declaration ->
             export
                 |+ Doc.space
                 |+ generateDeclaration declaration
 
-        DefaultDeclarationExport declaration ->
+        DefaultHoistableDeclarationExport declaration ->
             export
                 |+ Doc.space
                 |+ default
                 |+ Doc.space
-                |+ generateDeclaration declaration
-
-        ExpressionExport expression ->
-            export
-                |+ Doc.space
-                |+ generateExpression expression
-                |+ semicolon
+                |+ generateHoistableDeclaration declaration
 
         DefaultExpressionExport expression ->
             export
@@ -101,19 +100,22 @@ generateExportDeclaration declaration =
                 |+ generateExpression expression
                 |+ semicolon
 
+        DefaultClassDeclarationExport identifier heritage elements ->
+            generateClassDeclaration identifier heritage elements
+
 
 generateExportSpecifier : ExportSpecifier -> Doc
 generateExportSpecifier specifier =
     case specifier of
         ExportSpecifier identifier ->
-            generateIdentifierName identifier
+            generateIdentifier identifier
 
         AsExportSpecifier identifier asIdentifier ->
-            generateIdentifierName identifier
+            generateIdentifier identifier
                 |+ Doc.space
                 |+ as_
                 |+ Doc.space
-                |+ generateIdentifierName asIdentifier
+                |+ generateIdentifier asIdentifier
 
 
 generateImportClause : ImportClause -> Doc
@@ -124,16 +126,16 @@ generateImportClause clause =
                 |+ Doc.space
                 |+ as_
                 |+ Doc.space
-                |+ generateBindingIdentifier asIdentifier
+                |+ generateIdentifier asIdentifier
 
         NameSpaceImport (Just defaultIdentifier) asIdentifier ->
-            generateBindingIdentifier defaultIdentifier
+            generateIdentifier defaultIdentifier
                 |+ comma
                 |+ asterisk
                 |+ Doc.space
                 |+ as_
                 |+ Doc.space
-                |+ generateBindingIdentifier asIdentifier
+                |+ generateIdentifier asIdentifier
 
         NamedImport Nothing [] ->
             Doc.empty
@@ -142,10 +144,10 @@ generateImportClause clause =
             specifiers |> List.map generateImportSpecifier |> Doc.join comma
 
         NamedImport (Just defaultIdentifier) [] ->
-            generateBindingIdentifier defaultIdentifier
+            generateIdentifier defaultIdentifier
 
         NamedImport (Just defaultIdentifier) specifiers ->
-            generateBindingIdentifier defaultIdentifier
+            generateIdentifier defaultIdentifier
                 |+ comma
                 |+ (specifiers |> List.map generateImportSpecifier |> Doc.join comma)
 
@@ -154,14 +156,14 @@ generateImportSpecifier : ImportSpecifier -> Doc
 generateImportSpecifier specifier =
     case specifier of
         ImportSpecifier identifier ->
-            generateBindingIdentifier identifier
+            generateIdentifier identifier
 
         AsImportSpecifier identifier asIdentifier ->
             generateIdentifier identifier
                 |+ Doc.space
                 |+ as_
                 |+ Doc.space
-                |+ generateBindingIdentifier asIdentifier
+                |+ generateIdentifier asIdentifier
 
 
 
@@ -176,6 +178,11 @@ generateStatement statement =
 
         Empty ->
             semicolon
+
+        VariableStatement bindings ->
+            var
+                |+ Doc.space
+                |+ (List.map generateBinding bindings |> Doc.join comma)
 
         ExpressionStatement expression ->
             generateExpression expression
@@ -233,8 +240,8 @@ generateBlock (Block statementList) =
         |> Doc.braces
 
 
-generateStatementList : StatementList -> Doc
-generateStatementList (StatementList statementList) =
+generateStatementList : List StatementListItem -> Doc
+generateStatementList statementList =
     statementList
         |> List.map generateStatementListItem
         |> Doc.concat
@@ -304,21 +311,21 @@ generateHandlerParameter : TryParameter -> Doc
 generateHandlerParameter tryParameter =
     case tryParameter of
         TryParameterIdentifier identifier ->
-            generateBindingIdentifier identifier
+            generateIdentifier identifier
 
         TryParameterPattern pattern ->
-            generateBindingPattern pattern
+            generatePattern pattern
 
 
-generateBindingPattern : BindingPattern -> Doc
-generateBindingPattern pattern =
+generatePattern : Pattern -> Doc
+generatePattern pattern =
     case pattern of
-        ObjectBindingPattern properties bindingRest ->
+        ObjectPattern properties bindingRest ->
             (List.map generateBindingProperty properties |> Doc.join comma)
                 |+ maybeProduce generateBindingRest bindingRest
                 |> Doc.braces
 
-        ArrayBindingPattern elements bindingRest ->
+        ArrayPattern elements bindingRest ->
             (List.map generateBindingElement elements |> Doc.join comma)
                 |+ maybeProduce generateBindingRest bindingRest
                 |> Doc.braces
@@ -328,17 +335,17 @@ generateBindingRestElement : BindingRestElement -> Doc
 generateBindingRestElement element =
     case element of
         BindingRestElementPattern pattern ->
-            generateBindingPattern pattern
+            generatePattern pattern
 
         BindingRestElementIdentifier identifier ->
-            generateBindingIdentifier identifier
+            generateIdentifier identifier
 
 
 generateBindingProperty : BindingProperty -> Doc
 generateBindingProperty property =
     case property of
         SingleNameBindingProperty identifier initializer ->
-            generateBindingIdentifier identifier
+            generateIdentifier identifier
                 |+ maybeProduce generateInitializer initializer
 
         ExpandedBindingProperty propertyName element ->
@@ -375,11 +382,11 @@ generateBindingElement : BindingElement -> Doc
 generateBindingElement element =
     case element of
         SingleNameBindingElement identifier initializer ->
-            generateBindingIdentifier identifier
+            generateIdentifier identifier
                 |+ maybeProduce generateInitializer initializer
 
-        BindingPatternElement pattern initializer ->
-            generateBindingPattern pattern
+        PatternElement pattern initializer ->
+            generatePattern pattern
                 |+ maybeProduce generateInitializer initializer
 
 
@@ -389,15 +396,37 @@ generateInitializer expression =
         |+ generateExpression expression
 
 
-generateBindingRest : BindingIdentifier -> Doc
+generateBindingRest : Identifier -> Doc
 generateBindingRest identifier =
     elipsis
-        |+ generateBindingIdentifier identifier
+        |+ generateIdentifier identifier
 
 
 generateDeclaration : Declaration -> Doc
 generateDeclaration declaration =
     case declaration of
+        LexicalDeclaration lexicalDeclaration ->
+            generateLexicalDeclaration lexicalDeclaration
+
+        HoistableDeclaration hoistableDeclaration ->
+            generateHoistableDeclaration hoistableDeclaration
+
+        ClassDeclaration identifier heritage elements ->
+            generateClassDeclaration identifier heritage elements
+
+
+generateClassDeclaration : Identifier -> Heritage -> List ClassElement -> Doc
+generateClassDeclaration identifier heritage elements =
+    class
+        |+ Doc.space
+        |+ generateIdentifier identifier
+        |+ generateHeritage heritage
+        |+ generateClassBody elements
+
+
+generateLexicalDeclaration : LexicalDeclaration -> Doc
+generateLexicalDeclaration lexicalDeclaration =
+    case lexicalDeclaration of
         Const binding ->
             const
                 |+ Doc.space
@@ -408,54 +437,46 @@ generateDeclaration declaration =
                 |+ Doc.space
                 |+ (List.map generateBinding binding |> Doc.join comma)
 
-        Var binding ->
-            var
-                |+ Doc.space
-                |+ (List.map generateBinding binding |> Doc.join comma)
 
-        FunctionDeclaration bindingIdentifier parameters block ->
+generateHoistableDeclaration : HoistableDeclaration -> Doc
+generateHoistableDeclaration hoistableDeclaration =
+    case hoistableDeclaration of
+        FunctionDeclaration identifier parameters block ->
             function
                 |+ generateParameters parameters
                 |+ generateBlock block
 
-        GeneratorDeclaration bindingIdentifier parameters block ->
+        GeneratorDeclaration identifier parameters block ->
             function
                 |+ asterisk
                 |+ generateParameters parameters
                 |+ generateBlock block
 
-        AsyncFunctionDeclaration bindingIdentifier parameters block ->
+        AsyncFunctionDeclaration identifier parameters block ->
             async
                 |+ Doc.space
                 |+ function
                 |+ generateParameters parameters
                 |+ generateBlock block
 
-        AsyncGeneratorDeclaration bindingIdentifier parameters block ->
+        AsyncGeneratorDeclaration identifier parameters block ->
             async
                 |+ Doc.space
                 |+ function
                 |+ asterisk
                 |+ generateParameters parameters
                 |+ generateBlock block
-
-        ClassDeclaration bindingIdentifier heritage elements ->
-            class
-                |+ Doc.space
-                |+ generateBindingIdentifier bindingIdentifier
-                |+ generateHeritage heritage
-                |+ generateClassBody elements
 
 
 generateBinding : Binding -> Doc
 generateBinding binding =
     case binding of
-        IdentifierBinding identifier bindingIdentifierExpression ->
-            generateBindingIdentifier identifier
-                |+ maybeProduce generateInitializer bindingIdentifierExpression
+        IdentifierBinding identifier identifierExpression ->
+            generateIdentifier identifier
+                |+ maybeProduce generateInitializer identifierExpression
 
         PatternBinding pattern expression ->
-            generateBindingPattern pattern
+            generatePattern pattern
                 |+ generateInitializer expression
 
 
@@ -641,11 +662,11 @@ generateForOf binding expression =
 generateForBinding : ForBinding -> Doc
 generateForBinding binding =
     case binding of
-        ForBindingIdentifier identifier ->
-            generateBindingIdentifier identifier
+        ForIdentifier identifier ->
+            generateIdentifier identifier
 
-        ForBindingPattern pattern ->
-            generateBindingPattern pattern
+        ForPattern pattern ->
+            generatePattern pattern
 
 
 generateSwitch : Expression -> List CaseClause -> Maybe DefaultClause -> Doc
@@ -683,19 +704,9 @@ generateExpression expression =
     Debug.crash "TODO"
 
 
-generateBindingIdentifier : BindingIdentifier -> Doc
-generateBindingIdentifier (BindingIdentifier identifierName) =
-    generateIdentifierName identifierName
-
-
 generateIdentifier : Identifier -> Doc
-generateIdentifier (Identifier identifierName) =
-    generateIdentifierName identifierName
-
-
-generateIdentifierName : IdentifierName -> Doc
-generateIdentifierName (IdentifierName identifierName) =
-    Doc.string identifierName
+generateIdentifier =
+    Doc.string
 
 
 maybeProduce : (a -> Doc) -> Maybe a -> Doc
