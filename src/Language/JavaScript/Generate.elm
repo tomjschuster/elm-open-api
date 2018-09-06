@@ -197,19 +197,19 @@ generateStatement statement =
         Return returnExpression ->
             return
                 |+ Doc.space
-                |+ maybeProduce generateExpression returnExpression
+                |+ maybeGenerate generateExpression returnExpression
                 |+ semicolon
 
         Break breakLabel ->
             break
                 |+ Doc.space
-                |+ maybeProduce generateIdentifier breakLabel
+                |+ maybeGenerate generateIdentifier breakLabel
                 |+ semicolon
 
         Continue continueLabel ->
             continue
                 |+ Doc.space
-                |+ maybeProduce generateIdentifier continueLabel
+                |+ maybeGenerate generateIdentifier continueLabel
                 |+ semicolon
 
         Throw expression ->
@@ -322,12 +322,12 @@ generatePattern pattern =
     case pattern of
         ObjectPattern properties bindingRest ->
             (List.map generateBindingProperty properties |> Doc.join comma)
-                |+ maybeProduce generateBindingRest bindingRest
+                |+ maybeGenerate generateBindingRest bindingRest
                 |> Doc.braces
 
         ArrayPattern elements bindingRest ->
             (List.map generateBindingElement elements |> Doc.join comma)
-                |+ maybeProduce generateBindingRest bindingRest
+                |+ maybeGenerate generateBindingRest bindingRest
                 |> Doc.braces
 
 
@@ -346,7 +346,7 @@ generateBindingProperty property =
     case property of
         SingleNameBindingProperty identifier initializer ->
             generateIdentifier identifier
-                |+ maybeProduce generateInitializer initializer
+                |+ maybeGenerate generateInitializer initializer
 
         ExpandedBindingProperty propertyName element ->
             generatePropertyName propertyName
@@ -383,11 +383,11 @@ generateBindingElement element =
     case element of
         SingleNameBindingElement identifier initializer ->
             generateIdentifier identifier
-                |+ maybeProduce generateInitializer initializer
+                |+ maybeGenerate generateInitializer initializer
 
         PatternElement pattern initializer ->
             generatePattern pattern
-                |+ maybeProduce generateInitializer initializer
+                |+ maybeGenerate generateInitializer initializer
 
 
 generateInitializer : Expression -> Doc
@@ -473,7 +473,7 @@ generateBinding binding =
     case binding of
         IdentifierBinding identifier identifierExpression ->
             generateIdentifier identifier
-                |+ maybeProduce generateInitializer identifierExpression
+                |+ maybeGenerate generateInitializer identifierExpression
 
         PatternBinding pattern expression ->
             generatePattern pattern
@@ -483,7 +483,7 @@ generateBinding binding =
 generateParameters : Parameters -> Doc
 generateParameters (Parameters elements restElement) =
     (List.map generateBindingElement elements |> Doc.join comma)
-        |+ maybeProduce generateBindingRestElement restElement
+        |+ maybeGenerate generateBindingRestElement restElement
         |> Doc.parens
 
 
@@ -615,9 +615,9 @@ generateFor : Declarator -> List Binding -> Maybe Expression -> Maybe Expression
 generateFor declarator init test update =
     generateForDeclarations declarator init
         |+ semicolon
-        |+ maybeProduce generateExpression test
+        |+ maybeGenerate generateExpression test
         |+ semicolon
-        |+ maybeProduce generateExpression update
+        |+ maybeGenerate generateExpression update
 
 
 generateForDeclarations : Declarator -> List Binding -> Doc
@@ -661,7 +661,7 @@ generateSwitch test caseClauses defaultClause =
 generateCaseClauses : List CaseClause -> Maybe DefaultClause -> Doc
 generateCaseClauses clauses defaultClause =
     (List.map generateCaseClause clauses |> Doc.join Doc.empty)
-        |+ maybeProduce generateDefaultClause defaultClause
+        |+ maybeGenerate generateDefaultClause defaultClause
         |> Doc.braces
 
 
@@ -683,7 +683,345 @@ generateDefaultClause statementList =
 
 generateExpression : Expression -> Doc
 generateExpression expression =
-    Debug.crash "TODO"
+    case expression of
+        This ->
+            this
+
+        IdentifierExpression identifier ->
+            generateIdentifier identifier
+
+        LiteralExpression literal ->
+            generateLiteral literal
+
+        ObjectLiteral propertyDefinitions ->
+            propertyDefinitions
+                |> List.map generatePropertyDefinition
+                |> Doc.join comma
+                |> Doc.braces
+
+        ArrayLiteral elements ->
+            elements
+                |> List.map generateArrayElement
+                |> Doc.join comma
+                |> Doc.brackets
+
+        TemplateLiteral templateItems ->
+            templateItems
+                |> List.map generateTemplateItem
+                |> Doc.concat
+                |> backticks
+
+        UnaryExpression operator operand ->
+            case operator of
+                Delete ->
+                    delete
+                        |+ Doc.space
+                        |+ generateExpression operand
+
+                Void ->
+                    void
+                        |+ Doc.parens (generateExpression operand)
+
+                TypeOf ->
+                    typeOf
+                        |+ Doc.space
+                        |+ generateExpression operand
+
+                UnaryPlus ->
+                    plus
+                        |+ generateExpression operand
+
+                UnaryNegation ->
+                    minus
+                        |+ generateExpression operand
+
+                BitwiseNot ->
+                    tilde
+                        |+ generateExpression operand
+
+                LogicalNot ->
+                    exclamationPoint
+                        |+ generateExpression operand
+
+        UpdateExpression operatorPosition operator leftHandSideExpression ->
+            case operatorPosition of
+                Prefix ->
+                    generateUpdateOperator operator
+                        |+ generateLeftHandSideExpression leftHandSideExpression
+
+                Postfix ->
+                    generateLeftHandSideExpression expression
+                        |+ generateUpdateOperator operator
+
+        BinaryExpression leftOperand operator rightOperand ->
+            case operator of
+                In ->
+                    generateExpression leftOperand
+                        |+ Doc.space
+                        |+ generateBinaryOperator operator
+                        |+ Doc.space
+                        |+ generateExpression rightOperand
+
+                InstanceOf ->
+                    generateExpression leftOperand
+                        |+ Doc.space
+                        |+ generateBinaryOperator operator
+                        |+ Doc.space
+                        |+ generateExpression rightOperand
+
+                otherOperator ->
+                    generateExpression leftOperand
+                        |+ generateBinaryOperator otherOperator
+                        |+ generateExpression rightOperand
+
+        ConditionalExpression test consequent alternate ->
+            generateExpression test
+                |+ questionMark
+                |+ generateExpression consequent
+                |+ colon
+                |+ generateExpression alternate
+
+        GroupingExpression expression ->
+            Doc.parens (generateExpression expression)
+
+        AssignmentExpression leftHandSideExpression operator expression ->
+            generateLeftHandSideExpression leftHandSideExpression
+                |+ generateAssignmentOperator operator
+                |+ generateExpression expression
+
+        FunctionExpression expression ->
+            generateFunctionExpression expression
+
+        MemberExpression expression ->
+            generateMemberExpression expression
+
+        CallExpression callee arguments ->
+            generateCallee callee
+                |+ generateArguments arguments
+
+        NewExpression identifier arguments ->
+            new
+                |+ Doc.space
+                |+ generateIdentifier identifier
+                |+ maybeGenerate generateArguments arguements
+
+        Await expression ->
+            await
+                |+ Doc.space
+                |+ generateExpression expression
+
+        Yield expression ->
+            yield
+                |+ Doc.space
+                |+ generateExpression expression
+
+        YieldGenerator expression ->
+            yield
+                |+ asterisk
+                |+ Doc.space
+                |+ generateExpression expression
+
+
+generateLiteral : Literal -> Doc
+generateLiteral literal =
+    case literal of
+        NullLiteral ->
+            null
+
+        BooleanLiteral bool ->
+            Doc.bool bool
+
+        Numeric float ->
+            Doc.float float
+
+        StringLiteral stringLiteral ->
+            generateStringLiteral stringLiteral
+
+
+generatePropertyDefinition : PropertyDefinition -> Doc
+generatePropertyDefinition propertyDefinition =
+    case propertyDefinition of
+        KeyValueProperty name expression ->
+            generatePropertyName name
+                |+ colon
+                |+ generateExpression expression
+
+        MethodProperty methodDefinition ->
+            generateMethodDefinition methodDefinition
+
+        SpreadProperty expression ->
+            elipsis
+                |+ generateExpression expression
+
+        ShortHandProperty identifier ->
+            generateIdentifier identifier
+
+
+generateArrayElement : ArrayElement -> Doc
+generateArrayElement element =
+    case element of
+        ExpressionElement expression ->
+            generateExpression expression
+
+        SpreadElement identifier ->
+            elipsis
+                |+ generateIdentifier identifier
+
+
+generateTemplateItem : TemplateItem -> Doc
+generateTemplateItem item =
+    case item of
+        TemplateString string ->
+            Doc.string string
+
+        TemplateSubstitution expression ->
+            dollarSign
+                |+ Doc.braces (generateExpression expression)
+
+
+generateUpdateOperator : UpdateOperator -> Doc
+generateUpdateOperator operator =
+    case operator of
+        Increment ->
+            plus |+ plus
+
+        Decrement ->
+            minus |+ minus
+
+
+generateBinaryOperator : BinaryOperator -> Doc
+generateBinaryOperator binaryOperator =
+    case binaryOperator of
+        Addition ->
+            plus
+
+        Subtraction ->
+            minus
+
+        Multiplication ->
+            asterisk
+
+        Division ->
+            slash
+
+        Exponentiation ->
+            asterisk |+ asterisk
+
+        BitwiseAND ->
+            ampersand
+
+        BitwiseXOR ->
+            carrot
+
+        BitwiseOR ->
+            pipe
+
+        LeftShift ->
+            leftCarrot |+ leftCarrot
+
+        RightShift ->
+            rightCarrot |+ rightCarrot
+
+        UnsignedRightShift ->
+            rightCarrot |+ rightCarrot |+ rightCarrot
+
+        And ->
+            ampersand |+ ampersand
+
+        Or ->
+            pipe |+ pipe
+
+        Equality ->
+            equals |+ equals
+
+        Inequality ->
+            exclamationPoint |+ equals
+
+        StrictEquality ->
+            equals |+ equals |+ equals
+
+        StrictInequality ->
+            exclamationPoint |+ equals |+ equals
+
+        GreaterThan ->
+            rightCarrot
+
+        GreaterThanOrEqual ->
+            rightCarrot |+ equals
+
+        LessThan ->
+            leftCarrot
+
+        LessThanOrEqual ->
+            leftCarrot |+ equals
+
+        InstanceOf ->
+            instanceOf
+
+        In ->
+            in_
+
+
+generateAssignmentOperator : AssignmentOperator -> Doc
+generateAssignmentOperator operator =
+    case operator of
+        Assignment ->
+            equals
+
+        AdditionAssignment ->
+            plus |+ equals
+
+        SubtractionAssignment ->
+            minus |+ equals
+
+        MultiplicationAssignment ->
+            asterisk |+ equals
+
+        DivisionAssignment ->
+            slash |+ equals
+
+        RemainderAssignment ->
+            percent |+ equals
+
+        ExponentiationAssignment ->
+            asterisk |+ asterisk |+ equals
+
+        LeftShiftAssignment ->
+            leftCarrot |+ leftCarrot |+ equals
+
+        RightShiftAssignment ->
+            rightCarrot |+ rightCarrot |+ equals
+
+        UnsignedRightShiftAssignment ->
+            rightCarrot |+ rightCarrot |+ rightCarrot |+ equals
+
+        BitwiseANDAssignment ->
+            ampersand |+ equals
+
+        BitwiseXORAssignment ->
+            carrot |+ equals
+
+        BitwiseORAssignment ->
+            pipe |+ equals
+
+
+generateLeftHandSideExpression : LeftHandSideExpression -> Doc
+generateLeftHandSideExpression leftHandSideExpression =
+    case leftHandSideExpression of
+        LeftHandSideIdentifier identifier ->
+            generateIdentifier identifier
+
+        LeftHandSideMemberExpression memberExpression ->
+            generateMemberExpression memberExpression
+
+        LeftHandSidePattern pattern ->
+            generatePattern pattern
+
+        LeftHandSideSuperProperty property ->
+            generateProperty property
+
+        LeftHandSideNewTarget ->
+            new |+ dot |+ target
 
 
 generateDeclarator : Declarator -> Doc
@@ -704,8 +1042,8 @@ generateIdentifier =
     Doc.string
 
 
-maybeProduce : (a -> Doc) -> Maybe a -> Doc
-maybeProduce f maybe =
+maybeGenerate : (a -> Doc) -> Maybe a -> Doc
+maybeGenerate f maybe =
     maybe
         |> Maybe.map f
         |> Maybe.withDefault Doc.empty
@@ -749,6 +1087,16 @@ continue =
 throw : Doc
 throw =
     Doc.string "throw"
+
+
+await : Doc
+await =
+    Doc.string "await"
+
+
+yield : Doc
+yield =
+    Doc.string "yield"
 
 
 debugger : Doc
@@ -876,9 +1224,29 @@ finally =
     Doc.string "finally"
 
 
+new : Doc
+new =
+    Doc.string "new"
+
+
+this : Doc
+this =
+    Doc.string "this"
+
+
+target : Doc
+target =
+    Doc.string "target"
+
+
 equals : Doc
 equals =
     Doc.char '='
+
+
+dot : Doc
+dot =
+    Doc.char '.'
 
 
 comma : Doc
@@ -904,3 +1272,98 @@ elipsis =
 asterisk : Doc
 asterisk =
     Doc.char '*'
+
+
+questionMark : Doc
+questionMark =
+    Doc.char '?'
+
+
+dollarSign : Doc
+dollarSign =
+    Doc.char '$'
+
+
+slash : Doc
+slash =
+    Doc.char '/'
+
+
+ampersand : Doc
+ampersand =
+    Doc.char '&'
+
+
+pipe : Doc
+pipe =
+    Doc.char '|'
+
+
+carrot : Doc
+carrot =
+    Doc.char '^'
+
+
+leftCarrot : Doc
+leftCarrot =
+    Doc.char '<'
+
+
+rightCarrot : Doc
+rightCarrot =
+    Doc.char '>'
+
+
+backtick : Doc
+backtick =
+    '`'
+
+
+backticks : Doc -> Doc
+backticks doc =
+    Doc.surround backtick backtick doc
+
+
+delete : Doc
+delete =
+    Doc.string "delete"
+
+
+void : Doc
+void =
+    Doc.string "void"
+
+
+typeOf : Doc
+typeOf =
+    Doc.string "typeof "
+
+
+plus : Doc
+plus =
+    Doc.char '+'
+
+
+minus : Doc
+minus =
+    Doc.char '-'
+
+
+tilde : Doc
+tilde =
+    Doc.char '~'
+
+
+percent : Doc
+percent =
+    Doc.char '%'
+
+
+exclamationPoint : Doc
+exclamationPoint =
+    Doc.char '!'
+
+
+instanceOf : Doc
+instanceOf =
+    Doc.string "instanceof"

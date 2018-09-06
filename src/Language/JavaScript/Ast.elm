@@ -194,10 +194,10 @@ type Expression
     | IdentifierExpression Identifier
     | LiteralExpression Literal
     | ObjectLiteral (List PropertyDefinition)
-    | ArrayLiteral (List Expression) (Maybe Expression)
+    | ArrayLiteral (List ArrayElement)
     | TemplateLiteral (List TemplateItem)
     | UnaryExpression UnaryOperator Expression
-    | UpdateExpression UpdateOperator LeftHandSideExpression
+    | UpdateExpression OperatorPosition UpdateOperator LeftHandSideExpression
     | BinaryExpression Expression BinaryOperator Expression
     | ConditionalExpression Expression Expression Expression
     | GroupingExpression Expression
@@ -205,7 +205,7 @@ type Expression
     | FunctionExpression FunctionExpression
     | MemberExpression MemberExpression
     | CallExpression Callee Arguments
-    | NewExpression Identifier Arguments
+    | NewExpression Identifier (Maybe Arguments)
     | Await Expression
     | Yield Expression
     | YieldGenerator Expression
@@ -222,10 +222,13 @@ type UnaryOperator
 
 
 type UpdateOperator
-    = PostfixIncrement
-    | PostfixDecrement
-    | PrefixIncrement
-    | PrefixDecrement
+    = Increment
+    | Decrement
+
+
+type OperatorPosition
+    = Prefix
+    | Postfix
 
 
 type BinaryOperator
@@ -234,14 +237,17 @@ type BinaryOperator
     | Subtraction
     | Multiplication
     | Division
+    | Exponentiation
       -- Bitwise Operators
     | BitwiseAND
     | BitwiseXOR
     | BitwiseOR
-    | BitwiseNOT
     | LeftShift
     | RightShift
     | UnsignedRightShift
+      -- Logical Operators
+    | And
+    | Or
       -- Comparison Operators
     | Equality
     | Inequality
@@ -302,6 +308,11 @@ type PropertyName
     | StringProperty StringLiteral
     | NumericProperty Float
     | ComputedPropertyName Expression
+
+
+type ArrayElement
+    = ExpressionElement Expression
+    | SpreadElement Identifier
 
 
 type TemplateItem
