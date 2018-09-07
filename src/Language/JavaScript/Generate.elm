@@ -750,7 +750,7 @@ generateExpression expression =
                         |+ generateLeftHandSideExpression leftHandSideExpression
 
                 Postfix ->
-                    generateLeftHandSideExpression expression
+                    generateLeftHandSideExpression leftHandSideExpression
                         |+ generateUpdateOperator operator
 
         BinaryExpression leftOperand operator rightOperand ->
@@ -803,7 +803,7 @@ generateExpression expression =
             new
                 |+ Doc.space
                 |+ generateIdentifier identifier
-                |+ maybeGenerate generateArguments arguements
+                |+ maybeGenerate generateArguments arguments
 
         Await expression ->
             await
@@ -834,8 +834,8 @@ generateLiteral literal =
         Numeric float ->
             Doc.float float
 
-        StringLiteral stringLiteral ->
-            generateStringLiteral stringLiteral
+        StringLiteralExpression string ->
+            generateStringLiteral string
 
 
 generatePropertyDefinition : PropertyDefinition -> Doc
@@ -1035,6 +1035,124 @@ generateDeclarator declarator =
 
         VarDeclarator ->
             var
+
+
+generateFunctionExpression : FunctionExpression -> Doc
+generateFunctionExpression expression =
+    case expression of
+        NormalFunctionExpression name parameters block ->
+            function
+                |+ Doc.space
+                |+ maybeGenerate generateIdentifier name
+                |+ generateParameters parameters
+                |+ generateBlock block
+
+        ArrowFunctionExpression parameters body ->
+            generateArrowParameters parameters
+                |+ fatArrow
+                |+ generateArrowBody body
+
+        AsyncFunctionExpression name parameters block ->
+            async
+                |+ Doc.space
+                |+ function
+                |+ Doc.space
+                |+ maybeGenerate generateIdentifier name
+                |+ generateParameters parameters
+                |+ generateBlock block
+
+        GeneratorExpression name parameters block ->
+            asterisk
+                |+ function
+                |+ Doc.space
+                |+ maybeGenerate generateIdentifier name
+                |+ generateParameters parameters
+                |+ generateBlock block
+
+        AsyncGeneratorExpression name parameters block ->
+            async
+                |+ Doc.space
+                |+ asterisk
+                |+ function
+                |+ Doc.space
+                |+ maybeGenerate generateIdentifier name
+                |+ generateParameters parameters
+                |+ generateBlock block
+
+        ClassExpression name heritage elements ->
+            class
+                |+ Doc.space
+                |+ maybeGenerate generateIdentifier name
+                |+ generateHeritage heritage
+                |+ generateClassBody elements
+
+
+generateArrowParameters : ArrowFunctionParameters -> Doc
+generateArrowParameters parameters =
+    case parameters of
+        UnparenthesizedArrowFunctionParam identifier ->
+            generateIdentifier identifier
+
+        NormalArrowFunctionParams normalParameters ->
+            generateParameters normalParameters
+
+
+generateArrowBody : ArrowFunctionBody -> Doc
+generateArrowBody body =
+    case body of
+        ConciseArrowFunctionBody expression ->
+            generateExpression expression
+
+        NormalArrowFunctionBody block ->
+            generateBlock block
+
+
+generateMemberExpression : MemberExpression -> Doc
+generateMemberExpression (Member expression property) =
+    generateExpression expression
+        |+ generateProperty property
+
+
+generateProperty : Property -> Doc
+generateProperty property =
+    case property of
+        ComputedProperty expression ->
+            Doc.brackets (generateExpression expression)
+
+        DotProperty identifier ->
+            dot
+                |+ generateIdentifier identifier
+
+
+generateCallee : Callee -> Doc
+generateCallee callee =
+    case callee of
+        IdentifierCallee identifier ->
+            generateIdentifier identifier
+
+        MemberExpressionCallee memberExpression ->
+            generateMemberExpression memberExpression
+
+        FunctionExpressionCallee functionExpression ->
+            generateFunctionExpression functionExpression
+
+        SuperCallee ->
+            super
+
+
+generateArguments : Arguments -> Doc
+generateArguments arguments =
+    case arguments of
+        Arguments [] (Just rest) ->
+            Doc.parens (elipsis |+ generateExpression rest)
+
+        Arguments expressions restExpression ->
+            Doc.parens
+                ((List.map generateExpression expressions |> Doc.join comma)
+                    |+ maybeGenerate
+                        (\x -> comma |+ elipsis |+ generateExpression x)
+                        restExpression
+                )
 
 
 generateIdentifier : Identifier -> Doc
@@ -1239,6 +1357,11 @@ target =
     Doc.string "target"
 
 
+super : Doc
+super =
+    Doc.string "super"
+
+
 equals : Doc
 equals =
     Doc.char '='
@@ -1314,9 +1437,14 @@ rightCarrot =
     Doc.char '>'
 
 
+fatArrow : Doc
+fatArrow =
+    Doc.string "=>"
+
+
 backtick : Doc
 backtick =
-    '`'
+    Doc.char '`'
 
 
 backticks : Doc -> Doc

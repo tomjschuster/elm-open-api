@@ -335,7 +335,7 @@ type FunctionExpression
     | AsyncFunctionExpression (Maybe Identifier) Parameters Block
     | GeneratorExpression (Maybe Identifier) Parameters Block
     | AsyncGeneratorExpression (Maybe Identifier) Parameters Block
-    | ClassExpression (Maybe Identifier) Heritage (List MethodDefinition)
+    | ClassExpression (Maybe Identifier) Heritage (List ClassElement)
 
 
 type ArrowFunctionParameters
@@ -362,4 +362,4 @@ type Callee
 
 
 type Arguments
-    = Arguments (List Expression) (Maybe Identifier)
+    = Arguments (List Expression) (Maybe Expression)
