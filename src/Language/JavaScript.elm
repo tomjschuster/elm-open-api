@@ -485,6 +485,133 @@ classElement ( static, methodDefinition ) =
 
 
 
+{- Expressions -}
+
+
+this : Expression
+this =
+    This
+
+
+identifier : Identifier -> Expression
+identifier identifier =
+    IdentifierExpression identifier
+
+
+null : Expression
+null =
+    LiteralExpression NullLiteral
+
+
+boolean : Bool -> Expression
+boolean value =
+    LiteralExpression <| BooleanLiteral value
+
+
+numeric : Float -> Expression
+numeric value =
+    LiteralExpression <| Numeric value
+
+
+string : String -> Expression
+string value =
+    LiteralExpression <| StringLiteralExpression <| stringLiteral value
+
+
+stringLiteral : String -> StringLiteral
+stringLiteral value =
+    StringLiteral value
+
+
+object : List PropertyDefinition -> Expression
+object definitions =
+    ObjectLiteral definitions
+
+
+kv : Identifier -> Expression -> PropertyDefinition
+kv key value =
+    KeyValueProperty (IdentifierProperty key) value
+
+
+kvString : String -> Expression -> PropertyDefinition
+kvString key value =
+    KeyValueProperty (StringProperty (stringLiteral key)) value
+
+
+kvComputed : Expression -> Expression -> PropertyDefinition
+kvComputed key value =
+    KeyValueProperty (ComputedPropertyName key) value
+
+
+methodProp :
+    Identifier
+    -> List ( Identifier, Maybe Expression )
+    -> Maybe Identifier
+    -> List StatementListItem
+    -> PropertyDefinition
+methodProp identifier fnParameters rest statements =
+    MethodProperty <| methodDef identifier fnParameters rest statements
+
+
+spreadProp : Expression -> PropertyDefinition
+spreadProp expression =
+    SpreadProperty expression
+
+
+shorthandProp : Identifier -> PropertyDefinition
+shorthandProp identifier =
+    ShortHandProperty identifier
+
+
+methodDef :
+    Identifier
+    -> List ( Identifier, Maybe Expression )
+    -> Maybe Identifier
+    -> List StatementListItem
+    -> MethodDefinition
+methodDef identifier fnParameters rest statements =
+    NormalMethod
+        (IdentifierProperty identifier)
+        (parameters fnParameters rest)
+        (block_ statements)
+
+
+array : List ArrayElement -> Expression
+array elements =
+    ArrayLiteral elements
+
+
+element : Expression -> ArrayElement
+element expression =
+    ExpressionElement expression
+
+
+spread : Expression -> ArrayElement
+spread expression =
+    SpreadElement expression
+
+
+template : List TemplateItem -> Expression
+template items =
+    TemplateLiteral items
+
+
+templateString : String -> TemplateItem
+templateString value =
+    TemplateString value
+
+
+templateSub : Expression -> TemplateItem
+templateSub expression =
+    TemplateSubstitution expression
+
+
+group : Expression -> Expression
+group expression =
+    GroupingExpression expression
+
+
+
 {- Statements -}
 -- Declarations
 
@@ -613,7 +740,7 @@ blockOBS statements =
 require : String -> Doc
 require path =
     Doc.string "require"
-        |+ Doc.parens (string path)
+        |+ Doc.parens (string_OBS path)
 
 
 
@@ -621,16 +748,16 @@ require path =
 -- Data Types
 
 
-string : String -> Doc
-string value =
+string_OBS : String -> Doc
+string_OBS value =
     value
         |> String.Extra.replace "'" "\\'"
         |> Doc.string
         |> Doc.squotes
 
 
-object : List ( String, Doc ) -> Doc
-object keyValues =
+object_OBS : List ( String, Doc ) -> Doc
+object_OBS keyValues =
     keyValues
         |> List.map (uncurry keyValue)
         |> Doc.join comma
@@ -642,7 +769,7 @@ property name object =
     if onlyWordChars name then
         object |+ dot |+ Doc.string name
     else
-        object |+ Doc.brackets (string name)
+        object |+ Doc.brackets (string_OBS name)
 
 
 onlyWordChars : String -> Bool
@@ -655,8 +782,8 @@ nonASCIIRegex =
     Regex.regex "^[_$a-zA-Z\\xA0-\\uFFFF][_$a-zA-Z0-9 -\\uFFFF]*$"
 
 
-array : List Doc -> Doc
-array expressions =
+array_OBS : List Doc -> Doc
+array_OBS expressions =
     expressions
         |> Doc.join comma
         |> Doc.brackets
@@ -664,7 +791,7 @@ array expressions =
 
 keyValue : String -> Doc -> Doc
 keyValue key expression =
-    string key
+    string_OBS key
         |+ colon
         |+ expression
 
@@ -675,7 +802,7 @@ keyValue key expression =
 
 useStrict : Doc
 useStrict =
-    string "use strict"
+    string_OBS "use strict"
         |+ semicolon
 
 

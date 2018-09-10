@@ -211,6 +211,41 @@ type Expression
     | YieldGenerator Expression
 
 
+type Literal
+    = NullLiteral
+    | BooleanLiteral Bool
+    | Numeric Float
+    | StringLiteralExpression StringLiteral
+
+
+type StringLiteral
+    = StringLiteral String
+
+
+type PropertyDefinition
+    = KeyValueProperty PropertyName Expression
+    | MethodProperty MethodDefinition
+    | SpreadProperty Expression
+    | ShortHandProperty Identifier
+
+
+type PropertyName
+    = IdentifierProperty Identifier
+    | StringProperty StringLiteral
+    | NumericProperty Float
+    | ComputedPropertyName Expression
+
+
+type ArrayElement
+    = ExpressionElement Expression
+    | SpreadElement Expression
+
+
+type TemplateItem
+    = TemplateString String
+    | TemplateSubstitution Expression
+
+
 type UnaryOperator
     = Delete
     | Void
@@ -283,41 +318,6 @@ type LeftHandSideExpression
     | LeftHandSidePattern Pattern
     | LeftHandSideSuperProperty Property
     | LeftHandSideNewTarget
-
-
-type Literal
-    = NullLiteral
-    | BooleanLiteral Bool
-    | Numeric Float
-    | StringLiteralExpression StringLiteral
-
-
-type StringLiteral
-    = StringLiteral String
-
-
-type PropertyDefinition
-    = KeyValueProperty PropertyName Expression
-    | MethodProperty MethodDefinition
-    | SpreadProperty Expression
-    | ShortHandProperty Identifier
-
-
-type PropertyName
-    = IdentifierProperty Identifier
-    | StringProperty StringLiteral
-    | NumericProperty Float
-    | ComputedPropertyName Expression
-
-
-type ArrayElement
-    = ExpressionElement Expression
-    | SpreadElement Identifier
-
-
-type TemplateItem
-    = TemplateString String
-    | TemplateSubstitution Expression
 
 
 type MemberExpression

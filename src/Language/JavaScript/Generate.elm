@@ -863,9 +863,9 @@ generateArrayElement element =
         ExpressionElement expression ->
             generateExpression expression
 
-        SpreadElement identifier ->
+        SpreadElement expression ->
             elipsis
-                |+ generateIdentifier identifier
+                |+ generateExpression expression
 
 
 generateTemplateItem : TemplateItem -> Doc
