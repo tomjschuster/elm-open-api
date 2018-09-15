@@ -198,7 +198,7 @@ type Expression
     | TemplateLiteral (List TemplateItem)
     | UnaryExpression UnaryOperator Expression
     | UpdateExpression OperatorPosition UpdateOperator LeftHandSideExpression
-    | BinaryExpression Expression BinaryOperator Expression
+    | BinaryExpression BinaryOperator Expression Expression
     | ConditionalExpression Expression Expression Expression
     | GroupingExpression Expression
     | AssignmentExpression LeftHandSideExpression AssignmentOperator Expression

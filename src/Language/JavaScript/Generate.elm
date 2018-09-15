@@ -753,7 +753,7 @@ generateExpression expression =
                     generateLeftHandSideExpression leftHandSideExpression
                         |+ generateUpdateOperator operator
 
-        BinaryExpression leftOperand operator rightOperand ->
+        BinaryExpression operator leftOperand rightOperand ->
             case operator of
                 In ->
                     generateExpression leftOperand

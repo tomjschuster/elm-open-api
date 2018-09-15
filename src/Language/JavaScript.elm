@@ -606,6 +606,195 @@ templateSub expression =
     TemplateSubstitution expression
 
 
+unary : UnaryOperator -> Expression -> Expression
+unary operator operand =
+    UnaryExpression operator operand
+
+
+delete : Expression -> Expression
+delete =
+    unary Delete
+
+
+void : Expression -> Expression
+void =
+    unary Void
+
+
+typeOf : Expression -> Expression
+typeOf =
+    unary TypeOf
+
+
+unaryPlus : Expression -> Expression
+unaryPlus =
+    unary UnaryPlus
+
+
+unaryNegation : Expression -> Expression
+unaryNegation =
+    unary UnaryNegation
+
+
+bitwiseNot : Expression -> Expression
+bitwiseNot =
+    unary BitwiseNot
+
+
+logicalNot : Expression -> Expression
+logicalNot =
+    unary LogicalNot
+
+
+update :
+    OperatorPosition
+    -> UpdateOperator
+    -> Identifier
+    -> Expression
+update position operator identifier =
+    UpdateExpression position operator (LeftHandSideIdentifier identifier)
+
+
+prefixIncrement : Identifier -> Expression
+prefixIncrement identifier =
+    update Prefix Increment identifier
+
+
+postfixIncrement : Identifier -> Expression
+postfixIncrement identifier =
+    update Postfix Increment identifier
+
+
+prefixDecrement : Identifier -> Expression
+prefixDecrement identifier =
+    update Prefix Decrement identifier
+
+
+postfixDecrement : Identifier -> Expression
+postfixDecrement identifier =
+    update Postfix Decrement identifier
+
+
+binary : BinaryOperator -> Expression -> Expression -> Expression
+binary operator leftOperand rightOperand =
+    BinaryExpression operator leftOperand rightOperand
+
+
+plus : Expression -> Expression -> Expression
+plus =
+    binary Addition
+
+
+minus : Expression -> Expression -> Expression
+minus =
+    binary Subtraction
+
+
+dividedBy : Expression -> Expression -> Expression
+dividedBy =
+    binary Division
+
+
+toThe : Expression -> Expression -> Expression
+toThe =
+    binary Exponentiation
+
+
+bitwiseAnd : Expression -> Expression -> Expression
+bitwiseAnd =
+    binary BitwiseAND
+
+
+bitwiseXor : Expression -> Expression -> Expression
+bitwiseXor =
+    binary BitwiseXOR
+
+
+bitwiseOr : Expression -> Expression -> Expression
+bitwiseOr =
+    binary BitwiseOR
+
+
+leftShift : Expression -> Expression -> Expression
+leftShift =
+    binary LeftShift
+
+
+rightShift : Expression -> Expression -> Expression
+rightShift =
+    binary RightShift
+
+
+unsignedRightShift : Expression -> Expression -> Expression
+unsignedRightShift =
+    binary UnsignedRightShift
+
+
+and : Expression -> Expression -> Expression
+and =
+    binary And
+
+
+or : Expression -> Expression -> Expression
+or =
+    binary Or
+
+
+equalTo : Expression -> Expression -> Expression
+equalTo =
+    binary Equality
+
+
+strictlyEqualTo : Expression -> Expression -> Expression
+strictlyEqualTo =
+    binary StrictEquality
+
+
+notEqualTo : Expression -> Expression -> Expression
+notEqualTo =
+    binary Inequality
+
+
+strictlyNotEqualTo : Expression -> Expression -> Expression
+strictlyNotEqualTo =
+    binary StrictInequality
+
+
+greaterThan : Expression -> Expression -> Expression
+greaterThan =
+    binary GreaterThan
+
+
+greaterThanOrEqual : Expression -> Expression -> Expression
+greaterThanOrEqual =
+    binary GreaterThanOrEqual
+
+
+lessThan : Expression -> Expression -> Expression
+lessThan =
+    binary LessThan
+
+
+lessThanOrEqual : Expression -> Expression -> Expression
+lessThanOrEqual =
+    binary LessThanOrEqual
+
+
+instanceOf : Expression -> Expression -> Expression
+instanceOf =
+    binary InstanceOf
+
+
+in_ : Expression -> Expression -> Expression
+in_ =
+    binary In
+
+
+ternary : Expression -> Expression -> Expression -> Expression
+ternary test consequent alternate =
+    ConditionalExpression test consequent alternate
+
+
 group : Expression -> Expression
 group expression =
     GroupingExpression expression
